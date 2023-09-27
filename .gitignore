@@ -2,3 +2,4 @@ media
 .vscode
 *.pdf
 *.npy
+__pycache__
