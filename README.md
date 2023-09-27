@@ -1,2 +1,2 @@
-# lambda_and_phase_separation
-# lambda_and_phase_separation
+# Lambda and Phase Separation transition in He3-He4 mixtures
+Numerical recipes for phase diagrams
