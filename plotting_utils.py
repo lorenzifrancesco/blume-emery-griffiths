@@ -34,11 +34,11 @@ def plot_sign(mat, name="lower.pdf"):
   plt.xticks(ticks=x_vec[::skip],  labels=[format(x, '.2f') for x in x_vec[::skip]])
   plt.yticks(ticks=tj_vec[::skip], labels=[format(x, '.2f') for x in tj_vec[::skip]])
   plt.colorbar()
-  plt.title(name[:-4])
+  # plt.title(name[:-4])
   if False:
     plt.show()
   print("saving plot", name, "...")
-  plt.savefig(name, format="pdf")
+  plt.savefig("media/"+name, format="pdf", bbox_inches='tight')
   return 0
 
 def plot_heatmap(mat, name="lower.pdf", type="normal"):
@@ -52,7 +52,8 @@ def plot_heatmap(mat, name="lower.pdf", type="normal"):
   mat = np.clip(mat, -1, 1)
   plt.imshow(np.flip(mat, axis = 0), extent = extent, cmap='hot', interpolation='nearest', vmin=np.min(mat), vmax=np.max(mat))
   plt.colorbar()
-  plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=[0])
+  # SET THE CORRECT LEVELS
+  plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=[0.463])
 
   plt.scatter(2/3, 1/3, c='mediumseagreen', marker='+', s=150)
   plt.xlabel('x')
@@ -60,11 +61,11 @@ def plot_heatmap(mat, name="lower.pdf", type="normal"):
   skip = 20
   plt.xticks(ticks=x_vec[::skip],  labels=[format(x, '.2f') for x in x_vec[::skip]])
   plt.yticks(ticks=tj_vec[::skip], labels=[format(x, '.2f') for x in tj_vec[::skip]])
-  plt.title(name[:-4])
+  # plt.title(name[:-4])
   if False:
     plt.show()
-  print("", name, "...")
-  plt.savefig(name, format="pdf")
+  print("saving plot ", name, "...")
+  plt.savefig("media/"+name, format="pdf", bbox_inches='tight')
   return 0
 
 def plot_contour(mat, name="lower.pdf", type="normal"):
@@ -84,11 +85,11 @@ def plot_contour(mat, name="lower.pdf", type="normal"):
   plt.xticks(ticks=x_vec[::skip],  labels=[format(x, '.2f') for x in x_vec[::skip]])
   plt.yticks(ticks=tj_vec[::skip], labels=[format(x, '.2f') for x in tj_vec[::skip]])
   plt.colorbar()
-  plt.title(name[:-4])
+  # plt.title(name[:-4])
   if False:
     plt.show()
   print("saving plot", name, "...")
-  plt.savefig(name, format="pdf")
+  plt.savefig("media/"+name, format="pdf", bbox_inches='tight')
   return 0
 
 def plot_surface(mat, name="surf.pdf", type="normal"):
@@ -112,7 +113,7 @@ def plot_surface(mat, name="surf.pdf", type="normal"):
   ax.set_ylabel('Y-axis')
   ax.set_zlabel('Z-axis')
   # Set plot title
-  plt.title(name[:-4])
+  # plt.title(name[:-4])
   # Show the plot
   plt.show()
   return
