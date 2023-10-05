@@ -3,7 +3,11 @@ import numpy as np
 from scipy.optimize import root
 from tqdm import tqdm
 import threading
+# def tresette(Delta, tj, K, x, M):
+#   return 
 
+# def treotto(Delta, tj, K, x, M):
+#   return M - 2*np.sinh(M/tj)/(np.exp(()/tj))
 
 def get_delta(bDelta, bK, x):
   # FIX: there was also the -bK(1-x) term
