@@ -6,6 +6,24 @@ import threading
 from plotting_utils import *
 from solver import *
 
+import matplotlib.pyplot as plt
+
+def sweep_T(
+    N=200, 
+    K_over_J=0.0):
+  print("\n============= defining vectors =============")
+  [tj_vec, Delta_vec] = get_arrays_order(N=N)
+  Delta = 0.45
+  x_results = 99 * np.ones_like(tj_vec)
+  prev = [0.1]
+  for it, tj in enumerate(tj_vec):
+    bK = K_over_J /tj
+    M = get_M(tj, Delta, bK, prev=0.5)
+    x_results[it] = get_x(tj, Delta, bK, M, prev=prev)
+    prev = x_results[it]
+  plt.scatter(x_results, tj_vec, marker="+", s=10)
+  plt.savefig("media/sweep_T.pdf", format="pdf", bbox_inches='tight')
+  return
 
 def compute_parameters(
     N=200, 
@@ -159,6 +177,11 @@ def plot_implicit(fn, bbox=(-2.5,2.5)):
     ax.set_zlim3d(zmin,zmax)
     ax.set_xlim3d(xmin,xmax)
     ax.set_ylim3d(ymin,ymax)
+
+
+sweep_T(N=200, 
+    K_over_J=0.0)
+
 
 K_over_J_list = [0.0]
 for K_over_J in K_over_J_list:

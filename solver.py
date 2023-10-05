@@ -3,11 +3,6 @@ import numpy as np
 from scipy.optimize import root
 from tqdm import tqdm
 import threading
-# def tresette(Delta, tj, K, x, M):
-#   return 
-
-# def treotto(Delta, tj, K, x, M):
-#   return M - 2*np.sinh(M/tj)/(np.exp(()/tj))
 
 def get_delta(bDelta, bK, x):
   # FIX: there was also the -bK(1-x) term
@@ -79,6 +74,18 @@ def get_M_x(tj, Delta, bK, prev):
   sol = root_solution.x
   # print("Solved! results are M =", sol[0], "and Delta =", sol[1])
   return sol
+
+def get_x(tj, Delta, bK, M, prev):
+  def eq(x):
+    return 1-x - 2*np.cosh(M/tj)/(np.exp( (Delta/tj - bK * (1-x))) + 2 * np.cosh(M/tj))
+  root_solution = root(eq, prev)
+  return root_solution.x
+
+def get_M(tj, Delta, bK, prev):
+  def eq(M):
+    return M - 2*np.sinh(M/tj)/(np.exp(Delta/tj - bK * (M*np.cosh(M/tj)/np.sinh(M/tj)) ) + 2 * np.cosh(M/tj))
+  root_solution = root(eq, prev)
+  return root_solution.x
 
 def compute_orders(
     N=200, 
