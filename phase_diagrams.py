@@ -124,7 +124,7 @@ def plot_all(matrices, K_over_J=0.0):
   plot_heatmap(deltozzo, name="heat_first_PT"+suffix +".pdf")
   plot_heatmap(M,        name="M"+suffix+".pdf")
   plot_contour(Delta,    name="Delta"+suffix+".pdf")
-  plot_heatmap(Delta,    name="Delta_heat"+suffix+".pdf")
+  plot_heatmap(Delta,    name="Delta_heat"+suffix+".pdf", level=0.465)
   plot_heatmap(tresette, name="tresette"+suffix+".pdf")
   plot_heatmap(treotto, name="treotto"+suffix+".pdf")
   plot_heatmap(trenove, name="trenove"+suffix+".pdf")

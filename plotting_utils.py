@@ -41,7 +41,7 @@ def plot_sign(mat, name="lower.pdf"):
   plt.savefig("media/"+name, format="pdf", bbox_inches='tight')
   return 0
 
-def plot_heatmap(mat, name="lower.pdf", type="normal"):
+def plot_heatmap(mat, name="lower.pdf", type="normal", level = 0.0):
   N = np.shape(mat)[0]
   if type=="normal":
     [tj_vec, x_vec] = get_arrays()
@@ -53,7 +53,7 @@ def plot_heatmap(mat, name="lower.pdf", type="normal"):
   plt.imshow(np.flip(mat, axis = 0), extent = extent, cmap='hot', interpolation='nearest', vmin=np.min(mat), vmax=np.max(mat))
   plt.colorbar()
   # SET THE CORRECT LEVELS
-  plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=[0.0])
+  plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=[level])
 
   plt.scatter(2/3, 1/3, c='mediumseagreen', marker='+', s=150)
   plt.xlabel('x')
