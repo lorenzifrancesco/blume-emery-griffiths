@@ -9,29 +9,37 @@ from solver import *
 import matplotlib.pyplot as plt
 
 def sweep_T(
+    Delta = 0.1,
     N=200, 
     K_over_J=0.0):
   print("\n============= defining vectors =============")
-  [tj_vec, Delta_vec] = get_arrays_order(N=N)
-  Delta = 0.45
+  [tj_vec, x_vec] = get_arrays(N=N)
   x_results = 99 * np.ones_like(tj_vec)
-  prev = [0.1]
+  success = ""
+
+  prev = [0.99]
   for it, tj in enumerate(tj_vec):
     bK = K_over_J /tj
     M = get_M(tj, Delta, bK, prev=0.5)
     x_results[it] = get_x(tj, Delta, bK, M, prev=prev)
-    prev = x_results[it]
+    # prev = x_results[it]
   plt.scatter(x_results, tj_vec, marker="+", s=10)
-  plt.savefig("media/sweep_T.pdf", format="pdf", bbox_inches='tight')
+  ax = plt.gca()
+  ax.set_xlim([x_vec[0], x_vec[-1]])
+  ax.set_ylim([tj_vec[0], tj_vec[-1]])
+  plt.xlabel("x")
+  plt.ylabel("T/J")
+  plt.legend(labels=["Delta = "+ str(Delta)])
+  plt.plot(x_vec, 1-x_vec, color="black")
+  plt.savefig("media/sweep_T_"+str(Delta)+".pdf", format="pdf", bbox_inches='tight')
   return
 
 def sweep_x(
+    Delta=0.1,
     N=200, 
     K_over_J=0.0):
   print("\n============= defining vectors =============")
-  [tj_vec, Delta_vec] = get_arrays_order(N=N)
   [tj_vec, x_vec] = get_arrays(N=N)
-  Delta = 0.5
   T_results = 99 * np.ones_like(x_vec)
   success = ""
 
@@ -45,11 +53,15 @@ def sweep_x(
       cc = "red"
     else:
       cc = "blue"
-    plt.scatter(x, T_results[ix], marker=success, color=cc, s=90)
+    plt.scatter(x, T_results[ix], marker=success, color=cc, s=30, alpha=0.3)
+  ax = plt.gca()
+  ax.set_xlim([x_vec[0], x_vec[-1]])
+  ax.set_ylim([tj_vec[0], tj_vec[-1]])
   plt.xlabel("x")
   plt.ylabel("T/J")
   plt.legend(labels=["Delta = "+ str(Delta)])
-  plt.savefig("media/sweep_x.pdf", format="pdf", bbox_inches='tight')
+  plt.plot(x_vec, 1-x_vec, color="black")
+  plt.savefig("media/sweep_x_"+str(Delta)+".pdf", format="pdf", bbox_inches='tight')
   return
 
 def compute_parameters(
@@ -279,4 +291,6 @@ def run(
     plot_surface(orders[1])
     return
 
-sweep_x()
+for Delta in np.linspace(0.3, 1, 10):
+  print("################# COMPUTING ", Delta)
+  sweep_T(Delta)
