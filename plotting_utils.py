@@ -41,12 +41,17 @@ def plot_sign(mat, name="lower.pdf"):
   plt.savefig("media/"+name, format="pdf", bbox_inches='tight')
   return 0
 
-def plot_heatmap(mat, name="lower.pdf", type="normal", level = 0.0):
+
+def plot_heatmap(mat, 
+                 name="lower.pdf", 
+                 type="normal", 
+                 level = 0.0, 
+                 midline=True):
   N = np.shape(mat)[0]
   if type=="normal":
-    [tj_vec, x_vec] = get_arrays()
+    [tj_vec, x_vec] = get_arrays(N=N)
   else:
-    [tj_vec, x_vec] = get_arrays_order()
+    [tj_vec, x_vec] = get_arrays_order(N=N)
   extent = [x_vec.min(), x_vec.max(), tj_vec.min(), tj_vec.max()]
   fig, ax = plt.subplots()
   mat = np.clip(mat, -1, 1)
@@ -54,7 +59,8 @@ def plot_heatmap(mat, name="lower.pdf", type="normal", level = 0.0):
   plt.colorbar()
   # SET THE CORRECT LEVELS
   plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=[level])
-  plt.plot(x_vec, 1-x_vec, linestyle="dotted", color="white")
+  if midline:
+    plt.plot(x_vec, 1-x_vec, linestyle="dotted", color="white")
 
   plt.scatter(2/3, 1/3, c='mediumseagreen', marker='+', s=150)
   plt.xlabel('x')
@@ -68,6 +74,7 @@ def plot_heatmap(mat, name="lower.pdf", type="normal", level = 0.0):
   print("saving plot ", name, "...")
   plt.savefig("media/"+name, format="pdf", bbox_inches='tight')
   return 0
+
 
 def plot_contour(mat, name="lower.pdf", type="normal"):
   N = np.shape(mat)[0]
@@ -93,12 +100,13 @@ def plot_contour(mat, name="lower.pdf", type="normal"):
   plt.savefig("media/"+name, format="pdf", bbox_inches='tight')
   return 0
 
+
 def plot_surface(mat, name="surf.pdf", type="normal"):
   N = np.shape(mat)[0]
   if type=="normal":
-    [tj_vec, x_vec] = get_arrays()
+    [tj_vec, x_vec] = get_arrays(N=N)
   else:
-    [tj_vec, x_vec] = get_arrays_order()
+    [tj_vec, x_vec] = get_arrays_order(N=N)
   
   X, Y = np.meshgrid(tj_vec, x_vec)
   Z = mat
@@ -110,9 +118,9 @@ def plot_surface(mat, name="surf.pdf", type="normal"):
   # Add color bar
   fig.colorbar(surf)
   # Set axis labels
-  ax.set_xlabel('X-axis')
-  ax.set_ylabel('Y-axis')
-  ax.set_zlabel('Z-axis')
+  ax.set_xlabel('Delta/J')
+  ax.set_ylabel('T/J')
+  ax.set_zlabel('x')
   # Set plot title
   # plt.title(name[:-4])
   # Show the plot
