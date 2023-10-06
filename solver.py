@@ -6,7 +6,7 @@ import threading
 
 def get_delta(bDelta, bK, x):
   # FIX: there was also the -bK(1-x) term
-  return 1+1/2*np.exp(bDelta-bK)
+  return 1+1/2*np.exp(bDelta)
 
 # betaA...
 def get_bA(d, tj):

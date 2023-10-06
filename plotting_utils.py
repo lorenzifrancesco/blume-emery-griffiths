@@ -54,6 +54,7 @@ def plot_heatmap(mat, name="lower.pdf", type="normal", level = 0.0):
   plt.colorbar()
   # SET THE CORRECT LEVELS
   plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=[level])
+  plt.plot(x_vec, 1-x_vec, linestyle="dotted", color="white")
 
   plt.scatter(2/3, 1/3, c='mediumseagreen', marker='+', s=150)
   plt.xlabel('x')

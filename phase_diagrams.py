@@ -51,7 +51,7 @@ def compute_parameters(
             x = x_vec[ix]
             # TODO: initial conditions are really sensible!!!
             # working for low K/J
-            start_point = [-(1-x)*1.2, 0.5]
+            start_point = [(1-x)*1.2, 0.5]
             # working for high K/J
             # start_point = [(1-x)*1.2, 2]
             for it, tj in enumerate(tj_vec):
@@ -68,7 +68,7 @@ def compute_parameters(
             for ix in range(start, end):
               x = x_vec[ix]
               if it == 0 :
-                start_point = [-(1-x)*1.5, 2]
+                start_point = [(1-x)*1.5, 2]
               else:
                 start_point = [M[it-1][ix-1], Delta[it-1][ix]]
               bK = K_over_J * 1 / tj
@@ -118,36 +118,29 @@ def plot_all(matrices, K_over_J=0.0):
   suffix = '_' + K_over_J.__str__().replace(".", "_")
   [M, Delta, bA, bB, bC] = matrices
   bDelta =  np.zeros_like(Delta)
-  denominator = np.zeros_like(Delta)
+  a = np.zeros_like(Delta)
+  b = np.zeros_like(Delta)
+  c = np.zeros_like(Delta)
 
-  tresette = np.zeros_like(Delta)
-  treotto = np.zeros_like(Delta)
-  trenove = np.zeros_like(Delta)
-  tredieci = np.zeros_like(Delta)
   [tj_vec, x_vec] = get_arrays()
 
   for it, tj in enumerate(tj_vec):
     bDelta[it, :] = tj * Delta[it, :]
-    denominator = np.exp((Delta[it, :]/tj - K_over_J /tj * (1-x_vec))) + 2 * np.cosh(M[it, :]/tj)
-    tresette[it, :] = 1-x_vec - 2*np.cosh(M[it, :]/tj)/(np.exp( (Delta[it, :]/tj - K_over_J / tj * (1-x_vec))) + 2 * np.cosh(M[it, :]/tj))
-    treotto[it, :] = M[it, :] - 2*np.sinh(M[it, :]/tj)/(np.exp((Delta[it, :]/tj - K_over_J / tj * (1-x_vec))) + 2 * np.cosh(M[it, :]/tj))
-    trenove[it, :] = (1-x_vec) - 2/( np.exp((Delta[it, :]/tj - K_over_J / tj * (1-x_vec))) + 2)
-    tredieci[it, :] = (1-x_vec) - M[it, :] * (np.cosh(M[it, :]/tj)/np.sinh(M[it, :]/tj))
-  print(np.shape(trenove))
+    a[it, :] = tj * bA[it, :]
+    b[it, :] = tj * bB[it, :]
+    c[it, :] = tj * bC[it, :]
+
 
   print("\n============= plotting =============")
   #
   # M and Delta as for MF EQUATIONS
-  deltozzo = bB**2 - 4*bA*bC
-  plot_heatmap(deltozzo, name="heat_first_PT"+suffix +".pdf")
   plot_heatmap(M,        name="M"+suffix+".pdf")
   plot_contour(Delta,    name="Delta"+suffix+".pdf")
   plot_heatmap(Delta,    name="Delta_heat"+suffix+".pdf", level=0.465)
-  plot_heatmap(tresette, name="tresette"+suffix+".pdf")
-  plot_heatmap(treotto, name="treotto"+suffix+".pdf")
-  plot_heatmap(trenove, name="trenove"+suffix+".pdf")
-  plot_heatmap(tredieci, name="tredieci"+suffix+".pdf")
-
+  plot_heatmap(a, name="a"+suffix+".pdf")
+  plot_heatmap(b, name="b"+suffix+".pdf")
+  plot_heatmap(b/c, name="b_over_c"+suffix+".pdf")
+  plot_heatmap(b**2-4*a*c, name="discriminant"+suffix+".pdf")
   # EXPANSION COEFFICIENTS 
   # print("\n\tmaximum of bC", np.max(bC), "\n\tminimum of bC", np.min(bC))
   # plot_sign(bC, name="bC"+suffix+".pdf")
@@ -177,10 +170,6 @@ def plot_implicit(fn, bbox=(-2.5,2.5)):
     ax.set_zlim3d(zmin,zmax)
     ax.set_xlim3d(xmin,xmax)
     ax.set_ylim3d(ymin,ymax)
-
-
-sweep_T(N=200, 
-    K_over_J=0.0)
 
 
 K_over_J_list = [0.0]
