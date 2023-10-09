@@ -1,7 +1,7 @@
 import numpy as np
 
 def get_arrays(N=200):
-  tj_vec = np.linspace(0.1, 1.0, N) # T/J
+  tj_vec = np.linspace(0.05, 1.0, N) # T/J
   x_vec  = np.linspace(0.01, 0.99, N)
   return [tj_vec, x_vec] 
 
