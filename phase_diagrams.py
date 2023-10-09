@@ -418,7 +418,7 @@ def run(
       Delta_treated, spinodal, separation = process_Delta(
         matrices[1], 
         tj_max = tj_max,
-        discriminant = discriminant
+        discriminant = None
         )
     else:
       Delta_treated = matrices[1]
@@ -434,7 +434,7 @@ def run(
                  clamp = [0.0, 2])
     plot_heatmap(Delta_treated,    
                  name="Delta_heat"+suffix+".pdf", 
-                 levels = np.linspace(0.1, 0.6, 20), 
+                 levels = np.linspace(0.05, 0.6, 100), 
                  midline=False, 
                  clamp = clampD)
     plot_heatmap(spinodal+separation,    
@@ -450,8 +450,8 @@ def run(
 
 run(
   K_over_J_list=[0.0], 
-  N=200, 
-  reset=False
+  N=400, 
+  reset=True
   )
 
 
