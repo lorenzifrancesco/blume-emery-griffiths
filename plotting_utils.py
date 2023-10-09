@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import os.path
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.colors as mcolors
+import matplotlib as mpl
 import numpy as np
 from ranges import *
 # WARN: since Colab cannot find the LaTeX library, in the plot preparation phase
@@ -46,7 +47,8 @@ def plot_heatmap(mat,
                  name="lower.pdf", 
                  type="normal", 
                  level = 0.0, 
-                 midline=True):
+                 midline=True, 
+                 x_name = "x"):
   N = np.shape(mat)[0]
   if type=="normal":
     [tj_vec, x_vec] = get_arrays(N=N)
@@ -63,7 +65,8 @@ def plot_heatmap(mat,
     plt.plot(x_vec, 1-x_vec, linestyle="dotted", color="white")
 
   plt.scatter(2/3, 1/3, c='mediumseagreen', marker='+', s=150)
-  plt.xlabel('x')
+  plt.plot(tj_vec, np.ones_like(x_vec)*1/3, color="green")
+  plt.xlabel(x_name)
   plt.ylabel('T/J')
   skip = 20
   plt.xticks(ticks=x_vec[::skip],  labels=[format(x, '.2f') for x in x_vec[::skip]])
@@ -125,4 +128,17 @@ def plot_surface(mat, name="surf.pdf", type="normal"):
   # plt.title(name[:-4])
   # Show the plot
   plt.show()
+  return
+
+def plot_project_Delta_x(
+    Delta, 
+    name="projection.pdf"):
+  N = np.shape(Delta)[0]
+  [tj_vec, x_vec] = get_arrays(N=N)
+  hot = mpl.colormaps["hot"]
+  for it, tj in enumerate(tj_vec):
+    plt.scatter(x_vec, Delta[it, :])
+  plt.show()
+  print("saving plot", name, "...")
+  plt.savefig("media/"+name, format="pdf", bbox_inches='tight')
   return
