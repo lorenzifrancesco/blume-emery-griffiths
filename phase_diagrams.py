@@ -2,7 +2,7 @@ import numpy as np
 from scipy.optimize import root
 from tqdm import tqdm
 import threading
-
+from numba import jit
 from plotting_utils import *
 from solver import *
 
@@ -66,11 +66,13 @@ def sweep_x(
   plt.savefig("media/sweep_x_"+str(Delta)+".pdf", format="pdf", bbox_inches='tight')
   return
 
+
 def compute_parameters(
     N=200, 
     K_over_J=0.0,
     num_threads=1,
-    reset=True):
+    reset=True, 
+    prev_mem = True):
   print("\n============= defining vectors =============")
   [tj_vec, x_vec] = get_arrays(N=N)
   M      = np.zeros((N, N))
@@ -86,25 +88,27 @@ def compute_parameters(
     print("\n============= start computing =============")
     # Define a worker function to fill the matrices
     def worker(start, end):
-        vertical = True
+        vertical = False
         if vertical:
           for ix in tqdm(range(start, end)):
             x = x_vec[ix]
             # TODO: initial conditions are really sensible!!!
             # working for low K/J
-            start_point = [(1-x)*1.2, 0.5]
+            start_point = [np.clip((1-x)*1.2, 0.0, 1.2), 0.5]
             # working for high K/J
             # start_point = [(1-x)*1.2, 2]
             for it, tj in enumerate(tj_vec):
                 bK = K_over_J / tj
                 [M[it][ix], Delta[it][ix]] = get_M_Delta_separate(tj, x, bK, prev = start_point)
-                start_point = [M[it][ix], np.abs(Delta[it][ix])]
+                if prev_mem:
+                  start_point = [M[it][ix], np.abs(Delta[it][ix])]
                 bDelta[it][ix] = Delta[it][ix] / tj
                 d = get_delta(bDelta[it][ix], bK, x)
                 bA[it][ix] = get_bA(d, tj) * tj
                 bB[it][ix] = get_bB(d) * tj
                 bC[it][ix] = get_bC(d) * tj
         else:
+          print("WARN: not good as the vertical one")
           for it, tj in tqdm(enumerate(tj_vec)):  
             for ix in range(start, end):
               x = x_vec[ix]
@@ -114,7 +118,8 @@ def compute_parameters(
                 start_point = [M[it-1][ix-1], Delta[it-1][ix]]
               bK = K_over_J * 1 / tj
               [M[it][ix], Delta[it][ix]] = get_M_Delta_separate(tj, x, bK, prev = start_point)
-              start_point = [M[it][ix], Delta[it][ix]]
+              if prev_mem:
+                  start_point = [M[it][ix], np.abs(Delta[it][ix])]
               bDelta[it][ix] = Delta[it][ix] / tj
               d = get_delta(bDelta[it][ix], bK, x)
               bA[it][ix] = get_bA(d, tj) * tj
@@ -133,8 +138,8 @@ def compute_parameters(
         thread.start()
     #
     # Wait for all threads to finish
-    for thread in threads:
-        thread.join()
+    # for thread in threads:
+    #     thread.join()
     #
     # Save the matrix to the file
     process_Delta(Delta, spinodal=False)
@@ -280,12 +285,14 @@ def plot_implicit(fn, bbox=(-2.5,2.5)):
     ax.set_ylim3d(ymin,ymax)
 
 
+@jit
 def process_Delta(
       Delta, 
       spinodal = True,
-      debug = False):
+      debug = False, 
+      tj_max = 0.33):
   N = np.shape(Delta)[0]
-  N_max = int(np.ceil(N/3))
+  N_max = int(np.ceil(N*tj_max))
   # find the spinodal
   [tj_vec, x_vec] = get_arrays(N=N)
   Delta_dx = np.zeros_like(Delta)
@@ -317,7 +324,6 @@ def process_Delta(
 
       locations = (np.diff(np.sign(Delta_dx[it, :])) != 0)*1
       stationary = np.where(locations == 1)[0]
-      print(stationary)
       if debug:
         pass
         # plt.plot(x_vec, Delta[it, :])  
@@ -367,12 +373,12 @@ def process_Delta(
 
 def run(
       N=1000):
-  K_over_J_list = [0.0]
+  K_over_J_list = [2.88]
   for K_over_J in K_over_J_list:
     print("\n\n°°°°°° computing for K/J =", K_over_J, " °°°°°°")
 
     matrices = compute_parameters(K_over_J = K_over_J, reset=True, N=N)
-    matrices[1] = process_Delta(matrices[1], spinodal=False)
+    matrices[1] = process_Delta(matrices[1], spinodal=False, tj_max = 1)
     plot_all(matrices, K_over_J=K_over_J, N = N)
 
     # ORDERS

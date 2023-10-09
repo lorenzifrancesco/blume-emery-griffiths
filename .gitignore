@@ -3,3 +3,7 @@ media
 *.pdf
 *.npy
 __pycache__
+share
+lib
+lib64
+bin
