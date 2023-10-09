@@ -21,7 +21,7 @@ plt.rcParams.update({
 
 def plot_sign(mat, name="lower.pdf"):
   N = np.shape(mat)[0]
-  [tj_vec, x_vec] = get_arrays()
+  [tj_vec, x_vec] = get_arrays(N=N)
   extent = [x_vec.min(), x_vec.max(), tj_vec.min(), tj_vec.max()]
   mask = np.zeros((N, N))
   mask[mat > 0.0] = 1
@@ -82,9 +82,9 @@ def plot_heatmap(mat,
 def plot_contour(mat, name="lower.pdf", type="normal"):
   N = np.shape(mat)[0]
   if type=="normal":
-    [tj_vec, x_vec] = get_arrays()
+    [tj_vec, x_vec] = get_arrays(N=N)
   else:
-    [tj_vec, x_vec] = get_arrays_order()
+    [tj_vec, x_vec] = get_arrays_order(N=N)
   extent = [x_vec.min(), x_vec.max(), tj_vec.min(), tj_vec.max()]
   fig, ax = plt.subplots()
   np.clip(mat, -10, 10)

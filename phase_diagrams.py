@@ -220,7 +220,7 @@ def compute_Mx(
 
    
 
-def plot_all(matrices, K_over_J=0.0):
+def plot_all(matrices, K_over_J=0.0, N=200):
   suffix = '_' + K_over_J.__str__().replace(".", "_")
   [M, Delta, bA, bB, bC] = matrices
   bDelta =  np.zeros_like(Delta)
@@ -228,7 +228,7 @@ def plot_all(matrices, K_over_J=0.0):
   b = np.zeros_like(Delta)
   c = np.zeros_like(Delta)
 
-  [tj_vec, x_vec] = get_arrays()
+  [tj_vec, x_vec] = get_arrays(N=N)
 
   for it, tj in enumerate(tj_vec):
     bDelta[it, :] = tj * Delta[it, :]
@@ -307,7 +307,7 @@ def process_Delta(
   
   # find the phase separation
   if not spinodal:
-    skip = 50
+    skip = 0
     for it, tj in enumerate(tj_vec[skip:]):
       it += skip
 
@@ -328,11 +328,8 @@ def process_Delta(
       top = Delta[it, H_idx]
       bottom = Delta[it, L_idx]
       select_level = (top + bottom)/2
-      print(top)
-      print(bottom)
       # run a certain number of bisections
       for i in list(range(4)):
-        print((np.diff(np.sign(Delta[it, :] - select_level)) != 0)*1)
         intersections = np.where((np.diff(np.sign(Delta[it, :] - select_level)) != 0)*1 == 1)
         print(intersections)
         if len(intersections[0]) == 3:
@@ -363,9 +360,9 @@ def run(
   for K_over_J in K_over_J_list:
     print("\n\n°°°°°° computing for K/J =", K_over_J, " °°°°°°")
 
-    matrices = compute_parameters(K_over_J = K_over_J, reset=True, N=N)
+    matrices = compute_parameters(K_over_J = K_over_J, reset=False, N=N)
     matrices[1] = process_Delta(matrices[1], spinodal=False)
-    plot_all(matrices, K_over_J=K_over_J)
+    plot_all(matrices, K_over_J=K_over_J, N = N)
 
     # ORDERS
     # orders = compute_Mx(K_over_J = K_over_J, reset=True, N=N)
@@ -373,7 +370,7 @@ def run(
     # plot_heatmap(orders[1], name="order_x.pdf", midline=False, x_name = "Delta")
     return
 
-run(1000)
+run(500)
 
 
 # for Delta in [0.2, 0.3, 0.4, 0.48, 0.51]:
