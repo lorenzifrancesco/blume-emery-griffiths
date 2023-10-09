@@ -2,7 +2,7 @@ import numpy as np
 
 def get_arrays(N=200):
   tj_vec = np.linspace(0.1, 1.0, N) # T/J
-  x_vec  = np.linspace(0.001, 0.999, N)
+  x_vec  = np.linspace(0.01, 0.99, N)
   return [tj_vec, x_vec] 
 
 def get_arrays_order(N=200):

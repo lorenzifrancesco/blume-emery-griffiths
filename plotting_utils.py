@@ -48,7 +48,8 @@ def plot_heatmap(mat,
                  type="normal", 
                  level = 0.0, 
                  midline=True, 
-                 x_name = "x"):
+                 x_name = r"$x$", 
+                 clamp = [-10, 10]):
   N = np.shape(mat)[0]
   if type=="normal":
     [tj_vec, x_vec] = get_arrays(N=N)
@@ -56,21 +57,23 @@ def plot_heatmap(mat,
     [tj_vec, x_vec] = get_arrays_order(N=N)
   extent = [x_vec.min(), x_vec.max(), tj_vec.min(), tj_vec.max()]
   fig, ax = plt.subplots()
-  mat = np.clip(mat, -1, 1)
+  mat = np.clip(mat, clamp[0], clamp[1])
   plt.imshow(np.flip(mat, axis = 0), extent = extent, cmap='hot', interpolation='nearest', vmin=np.min(mat), vmax=np.max(mat))
   plt.colorbar()
   # SET THE CORRECT LEVELS
-  plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=[level])
+  plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=[level], linewidths=[0.5], extent=extent)
   if midline:
-    plt.plot(x_vec, 1-x_vec, linestyle="dotted", color="white")
+    # beware, this goes beyond the bottom line
+    plt.plot(tj_vec, 1-tj_vec, linestyle="dotted", color="white")
 
   plt.scatter(2/3, 1/3, c='mediumseagreen', marker='+', s=150)
-  plt.plot(tj_vec, np.ones_like(x_vec)*1/3, color="green")
+  # plt.plot(tj_vec, np.ones_like(x_vec)*1/3, color="green")
   plt.xlabel(x_name)
-  plt.ylabel('T/J')
-  skip = 20
-  plt.xticks(ticks=x_vec[::skip],  labels=[format(x, '.2f') for x in x_vec[::skip]])
-  plt.yticks(ticks=tj_vec[::skip], labels=[format(x, '.2f') for x in tj_vec[::skip]])
+  plt.ylabel(r'$T/J$')
+  number_of_ticks = 7
+  skip = int(np.round(N/number_of_ticks))
+  plt.xticks(ticks=x_vec[::skip],  labels=[r'${:.2f}$'.format(x) for x in x_vec[::skip]])
+  plt.yticks(ticks=tj_vec[::skip], labels=[r'${:.2f}$'.format(x) for x in tj_vec[::skip]])
   # plt.title(name[:-4])
   if False:
     plt.show()
@@ -82,7 +85,9 @@ def plot_heatmap(mat,
 def plot_contour(mat, 
                  name="lower.pdf", 
                  type="normal", 
-                 levels = 200):
+                 levels = 200,
+                 K_over_J = 0.0, 
+                 clamp = [-10, 10]):
   N = np.shape(mat)[0]
   if type=="normal":
     [tj_vec, x_vec] = get_arrays(N=N)
@@ -90,14 +95,15 @@ def plot_contour(mat,
     [tj_vec, x_vec] = get_arrays_order(N=N)
   extent = [x_vec.min(), x_vec.max(), tj_vec.min(), tj_vec.max()]
   fig, ax = plt.subplots()
-  np.clip(mat, -10, 10)
-  plt.contour(x_vec, tj_vec, mat, levels=levels)
+  # np.clip(mat, clamp[0], clamp[1])
+  plt.contour(x_vec, tj_vec, mat, levels=levels, extent=extent)
   plt.scatter(2/3, 1/3, c='red', marker='+')
   plt.xlabel('x')
   plt.ylabel('T/J')
-  skip = 20
-  plt.xticks(ticks=x_vec[::skip],  labels=[format(x, '.2f') for x in x_vec[::skip]])
-  plt.yticks(ticks=tj_vec[::skip], labels=[format(x, '.2f') for x in tj_vec[::skip]])
+  number_of_ticks = 7
+  skip = int(np.round(N/number_of_ticks))
+  plt.xticks(ticks=x_vec[::skip],  labels=[r'${:.2f}$'.format(x) for x in x_vec[::skip]])
+  plt.yticks(ticks=tj_vec[::skip], labels=[r'${:.2f}$'.format(x) for x in tj_vec[::skip]])
   plt.colorbar()
   # plt.title(name[:-4])
   if False:
@@ -117,16 +123,16 @@ def plot_surface(mat, name="surf.pdf", type="normal"):
   X, Y = np.meshgrid(tj_vec, x_vec)
   Z = mat
   # Clip z values to be between -1 and 1
-  Z = np.clip(Z, -1, 1)
+  Z = np.clip(Z, -10, 10)
   fig = plt.figure()
   ax = fig.add_subplot(111, projection='3d')
   surf = ax.plot_surface(X, Y, Z, cmap='viridis')
   # Add color bar
   fig.colorbar(surf)
   # Set axis labels
-  ax.set_xlabel('Delta/J')
-  ax.set_ylabel('T/J')
-  ax.set_zlabel('x')
+  ax.set_xlabel(r'$Delta/J$')
+  ax.set_ylabel(r'$T/J$')
+  ax.set_zlabel(r'$x$')
   # Set plot title
   # plt.title(name[:-4])
   # Show the plot
