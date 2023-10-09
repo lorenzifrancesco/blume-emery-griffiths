@@ -141,8 +141,8 @@ def compute_parameters(
         thread.start()
     #
     # Wait for all threads to finish
-    # for thread in threads:
-    #     thread.join()
+    for thread in threads:
+        thread.join()
     #
     # Save the matrix to the file
     #
@@ -268,12 +268,12 @@ def process_Delta(
     ix += 1
     Delta_dx[:, ix] = Delta[:, ix]-Delta[:, ix-1]
   Delta_dx[:, 0] = Delta_dx[:, 1]
-  
+
   if spinodal:
   # find the spinodal line
     change_sign = 1
     print("\n\n--------------- Finding spinodal ---------------")
-    for it, tj in tqdm(enumerate(tj_vec[:N_max])):
+    for it, tj in tqdm(enumerate(tj_vec[:N_max]), ascii=' >='):
       for ix, x in enumerate(x_vec[1:]):
         ix += 1
         change_sign = Delta_dx[it, ix] * Delta_dx[it, ix-1]
@@ -286,17 +286,16 @@ def process_Delta(
           break
   else:
   # find the phase separation
-    skip = 1
+    skip = 0
     print("\n\n--------------- Maxwellizing the Delta ---------------")
-    for it, tj in tqdm(enumerate(tj_vec[skip:N_max])):
+    for it, tj in tqdm(enumerate(tj_vec[skip:N_max]), ascii=' >='):
       it += skip
-
       locations = (np.diff(np.sign(Delta_dx[it, :])) != 0)*1
       stationary = np.where(locations == 1)[0]
       if debug:
-        plt.plot(x_vec, Delta[it, :])  
+        plt.plot(x_vec, Delta[it, :])
         plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
-        print(stationary)
+        print("stationary:", stationary)
       if len(stationary) != 2:
         print("didn't find two stationary point, passing to next temp...")
       else:
@@ -321,11 +320,14 @@ def process_Delta(
             md_point = intersections[1]
             rx_point = intersections[2]
           elif len(intersections) == 1:
-            # print("Found 1 intersection...")
+            print("Insufficient number of intersections, breaking...")
+            break
             lx_point = 0
             md_point = intersections[0]
             rx_point = N-1
           elif len(intersections) == 2:
+            print("Insufficient number of intersections, breaking...")
+            break
             if H_idx < intersections[1]: 
               lx_point = intersections[0]
               md_point = intersections[1]
@@ -362,38 +364,44 @@ def run(
       N=N
       )
     
-    # process Delta
-    tj_max = 1.0
-    if K_over_J == 0.0:
-      tj_max = 0.33
-    elif K_over_J < 1:
-      tj_max = 0.7
-    matrices[1], dots = process_Delta(
-      matrices[1], 
-      spinodal=False, 
-      tj_max = tj_max
-      )
-
+    if True:
+      print("\n\n°°°°°° Treating Delta °°°°°°")
+      # process Delta
+      tj_max = 1.0
+      if K_over_J == 0.0:
+        tj_max = 0.33
+      elif K_over_J < 1:
+        tj_max = 0.7
+      Delta_treated, dots = process_Delta(
+        matrices[1], 
+        spinodal=False, 
+        tj_max = tj_max
+        )
+    else:
+      Delta_treated = matrices[1]
+      dots = np.zeros_like(Delta_treated)
+    
+    print("\n\n°°°°°° Plotting °°°°°°")
     suffix = '_' + K_over_J.__str__().replace(".", "_")
-    [M, Delta, bA, bB, bC] = matrices
-    bDelta =  np.zeros_like(Delta)
-    a = np.zeros_like(Delta)
-    b = np.zeros_like(Delta)
-    c = np.zeros_like(Delta)
+    [M, Delta_treated, bA, bB, bC] = matrices
+    bDelta =  np.zeros_like(Delta_treated)
+    a = np.zeros_like(Delta_treated)
+    b = np.zeros_like(Delta_treated)
+    c = np.zeros_like(Delta_treated)
 
     [tj_vec, x_vec] = get_arrays(N=N)
     for it, tj in enumerate(tj_vec):
-      bDelta[it, :] = Delta[it, :] / tj
+      bDelta[it, :] = Delta_treated[it, :] / tj
       a[it, :] = tj * bA[it, :]
       b[it, :] = tj * bB[it, :]
       c[it, :] = tj * bC[it, :]
     print("\n============= plotting =============")
     clampD = [0.0, 1] 
-    plot_contour(Delta,    
+    plot_contour(Delta_treated,    
                  name="Delta"+suffix+".pdf", 
                  levels=400, 
                  clamp = [0.0, 2])
-    plot_heatmap(Delta,    
+    plot_heatmap(Delta_treated,    
                  name="Delta_heat"+suffix+".pdf", 
                  level=0.48, 
                  midline=False, 
