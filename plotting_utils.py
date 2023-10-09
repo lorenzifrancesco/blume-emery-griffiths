@@ -46,7 +46,7 @@ def plot_sign(mat, name="lower.pdf"):
 def plot_heatmap(mat, 
                  name="lower.pdf", 
                  type="normal", 
-                 level = 0.0, 
+                 levels = [0.0], 
                  midline=True, 
                  x_name = r"$x$", 
                  clamp = [-10, 10]):
@@ -61,7 +61,7 @@ def plot_heatmap(mat,
   plt.imshow(np.flip(mat, axis = 0), extent = extent, cmap='hot', interpolation='nearest', vmin=np.min(mat), vmax=np.max(mat))
   plt.colorbar()
   # SET THE CORRECT LEVELS
-  plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=[level], linewidths=[0.5], extent=extent)
+  plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=levels, linewidths=[0.5], extent=extent)
   if midline:
     # beware, this goes beyond the bottom line
     plt.plot(tj_vec, 1-tj_vec, linestyle="dotted", color="white")
