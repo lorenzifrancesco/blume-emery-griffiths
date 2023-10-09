@@ -449,8 +449,8 @@ def run(
 
 
 run(
-  K_over_J_list=[0.0], 
-  N=400, 
+  K_over_J_list=[3.8], 
+  N=200, 
   reset=True
   )
 
