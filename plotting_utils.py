@@ -79,7 +79,10 @@ def plot_heatmap(mat,
   return 0
 
 
-def plot_contour(mat, name="lower.pdf", type="normal"):
+def plot_contour(mat, 
+                 name="lower.pdf", 
+                 type="normal", 
+                 levels = 200):
   N = np.shape(mat)[0]
   if type=="normal":
     [tj_vec, x_vec] = get_arrays(N=N)
@@ -88,7 +91,7 @@ def plot_contour(mat, name="lower.pdf", type="normal"):
   extent = [x_vec.min(), x_vec.max(), tj_vec.min(), tj_vec.max()]
   fig, ax = plt.subplots()
   np.clip(mat, -10, 10)
-  plt.contour(x_vec, tj_vec, mat, levels=200)
+  plt.contour(x_vec, tj_vec, mat, levels=levels)
   plt.scatter(2/3, 1/3, c='red', marker='+')
   plt.xlabel('x')
   plt.ylabel('T/J')

@@ -137,6 +137,8 @@ def compute_parameters(
         thread.join()
     #
     # Save the matrix to the file
+    process_Delta(Delta, spinodal=False)
+    #
     print("\n============= saving =============")
     np.save('M_matrix'+suffix+'.npy', M)
     np.save('Delta_matrix'+suffix+'.npy', Delta)
@@ -231,7 +233,7 @@ def plot_all(matrices, K_over_J=0.0, N=200):
   [tj_vec, x_vec] = get_arrays(N=N)
 
   for it, tj in enumerate(tj_vec):
-    bDelta[it, :] = tj * Delta[it, :]
+    bDelta[it, :] = Delta[it, :] / tj
     a[it, :] = tj * bA[it, :]
     b[it, :] = tj * bB[it, :]
     c[it, :] = tj * bC[it, :]
@@ -241,8 +243,8 @@ def plot_all(matrices, K_over_J=0.0, N=200):
   #
   # M and Delta as for MF EQUATIONS
   plot_heatmap(M,        name="M"+suffix+".pdf")
-  plot_contour(Delta,    name="Delta"+suffix+".pdf")
-  plot_heatmap(Delta,    name="Delta_heat"+suffix+".pdf", level=0.0)
+  plot_contour(Delta,    name="Delta"+suffix+".pdf", levels=1000)
+  plot_heatmap(Delta,    name="Delta_heat"+suffix+".pdf", level=0.48)
   plot_heatmap(a, name="a"+suffix+".pdf")
   plot_heatmap(b, name="b"+suffix+".pdf")
   plot_heatmap(b/c, name="b_over_c"+suffix+".pdf")
@@ -280,8 +282,10 @@ def plot_implicit(fn, bbox=(-2.5,2.5)):
 
 def process_Delta(
       Delta, 
-      spinodal = True):
+      spinodal = True,
+      debug = False):
   N = np.shape(Delta)[0]
+  N_max = int(np.ceil(N/3))
   # find the spinodal
   [tj_vec, x_vec] = get_arrays(N=N)
   Delta_dx = np.zeros_like(Delta)
@@ -293,7 +297,7 @@ def process_Delta(
   if spinodal:
     change_sign = 1
     print("---------- Processing Delta")
-    for it, tj in tqdm(enumerate(tj_vec)):
+    for it, tj in tqdm(enumerate(tj_vec[:N_max])):
       for ix, x in enumerate(x_vec[1:]):
         ix += 1
         change_sign = Delta_dx[it, ix] * Delta_dx[it, ix-1]
@@ -308,50 +312,57 @@ def process_Delta(
   # find the phase separation
   if not spinodal:
     skip = 0
-    for it, tj in enumerate(tj_vec[skip:]):
+    for it, tj in enumerate(tj_vec[skip:N_max]):
       it += skip
 
       locations = (np.diff(np.sign(Delta_dx[it, :])) != 0)*1
       stationary = np.where(locations == 1)[0]
       print(stationary)
-      plt.plot(x_vec, Delta[it, :])  
-      plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
+      if debug:
+        pass
+        # plt.plot(x_vec, Delta[it, :])  
+        # plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
 
       if len(stationary) != 2:
-        print("didn't find maxima, aborting...")
-        break
-      plt.scatter(x_vec[stationary], Delta[it, stationary], color="red")
-      plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
+        print("didn't find maxima, passing to next temp...")
+      else:
+        if debug:
+          pass
+          # plt.scatter(x_vec[stationary], Delta[it, stationary], color="red")
+          # plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
 
-      H_idx = stationary[0]
-      L_idx = stationary[1]
-      top = Delta[it, H_idx]
-      bottom = Delta[it, L_idx]
-      select_level = (top + bottom)/2
-      # run a certain number of bisections
-      for i in list(range(4)):
-        intersections = np.where((np.diff(np.sign(Delta[it, :] - select_level)) != 0)*1 == 1)
-        print(intersections)
-        if len(intersections[0]) == 3:
-          lx_point = intersections[0][0]
-          md_point = intersections[0][1]
-          rx_point = intersections[0][2]
-        elif len(intersections[0]) == 1:
-          lx_point = 0
-          md_point = intersections[0][0]
-          rx_point = N
-        else:
-          print("intersections are not 1 and not 3, aborting...")
-          break
-        lx_sum = np.sum(Delta[it, lx_point:md_point] - select_level)
-        rx_sum = np.sum(select_level - Delta[it, md_point:rx_point])
-        if lx_sum > rx_sum:
-          bottom = select_level
-        else:
-          top = select_level 
-        select_level = (bottom + top) / 2
+        H_idx = stationary[0]
+        L_idx = stationary[1]
+        top = Delta[it, H_idx]
+        bottom = Delta[it, L_idx]
+        select_level = (top + bottom)/2
+        # run a certain number of bisections
+        for i in list(range(4)):
+          intersections = np.where((np.diff(np.sign(Delta[it, :] - select_level)) != 0)*1 == 1)
+          if len(intersections[0]) == 3:
+            print("Found 3 intersections...")
+            lx_point = intersections[0][0]
+            md_point = intersections[0][1]
+            rx_point = intersections[0][2]
+          elif len(intersections[0]) == 1:
+            print("Found 1 intersection...")
+            lx_point = 0
+            md_point = intersections[0][0]
+            rx_point = N
+          else:
+            print("intersections are not 1 and not 3, aborting Maxwell...")
+            lx_point = 0
+            rx_point = N
+            break
+          lx_sum = np.sum(Delta[it, lx_point:md_point] - select_level)
+          rx_sum = np.sum(select_level - Delta[it, md_point:rx_point])
+          if lx_sum > rx_sum:
+            bottom = select_level
+          else:
+            top = select_level 
+          select_level = (bottom + top) / 2
+        Delta[it, lx_point:rx_point] = select_level
 
-      Delta[it, lx_point:rx_point] = select_level
   return Delta
 
 def run(
@@ -360,7 +371,7 @@ def run(
   for K_over_J in K_over_J_list:
     print("\n\n°°°°°° computing for K/J =", K_over_J, " °°°°°°")
 
-    matrices = compute_parameters(K_over_J = K_over_J, reset=False, N=N)
+    matrices = compute_parameters(K_over_J = K_over_J, reset=True, N=N)
     matrices[1] = process_Delta(matrices[1], spinodal=False)
     plot_all(matrices, K_over_J=K_over_J, N = N)
 
