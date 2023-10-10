@@ -14,7 +14,7 @@ plt.rcParams.update({
     "font.family": "Helvetica"
 })
 #
-# reproduce figures with the (T/j, x) plane and different K
+# reproduce figures with the (T, x) plane and different K
 # bSomething means \beta * Something
 #
 # solve (3.10) always valid in the assumption M!=0
@@ -30,7 +30,7 @@ def plot_sign(mat, name="lower.pdf"):
   plt.imshow(np.flip(mask, axis=0), cmap='hot', interpolation='nearest', extent=extent)
   plt.scatter(2/3, 1/3, c='red', marker='+')
   plt.xlabel('x')
-  plt.ylabel('T/J')
+  plt.ylabel('T')
   skip = 20
   plt.xticks(ticks=x_vec[::skip],  labels=[format(x, '.2f') for x in x_vec[::skip]])
   plt.yticks(ticks=tj_vec[::skip], labels=[format(x, '.2f') for x in tj_vec[::skip]])
@@ -71,7 +71,7 @@ def plot_heatmap(mat,
   plt.scatter(2/3, 1/3, c='mediumseagreen', marker='+', s=150)
   # plt.plot(tj_vec, np.ones_like(x_vec)*1/3, color="green")
   plt.xlabel(x_name)
-  plt.ylabel(r'$T/J$')
+  plt.ylabel(r'$T$')
   number_of_ticks = 7
   skip = int(np.round(N/number_of_ticks))
   plt.xticks(ticks=x_vec[::skip],  labels=[r'${:.2f}$'.format(x) for x in x_vec[::skip]])
@@ -102,7 +102,7 @@ def plot_contour(mat,
   plt.contour(x_vec, tj_vec, mat, levels=levels, extent=extent)
   plt.scatter(2/3, 1/3, c='red', marker='+')
   plt.xlabel(r'$x$')
-  plt.ylabel(r'$T/J$')
+  plt.ylabel(r'$T$')
   number_of_ticks = 7
   skip = int(np.round(N/number_of_ticks))
   plt.xticks(ticks=x_vec[::skip],  labels=[r'${:.2f}$'.format(x) for x in x_vec[::skip]])
@@ -135,7 +135,7 @@ def plot_surface(mat, name="surf.pdf", type="normal"):
   fig.colorbar(surf)
   # Set axis labels
   ax.set_xlabel(r'$Delta/J$')
-  ax.set_ylabel(r'$T/J$')
+  ax.set_ylabel(r'$T$')
   ax.set_zlabel(r'$x$')
   # Set plot title
   # plt.title(name[:-4])

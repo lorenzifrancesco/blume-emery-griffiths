@@ -27,7 +27,7 @@ def sweep_T(
   ax.set_xlim([x_vec[0], x_vec[-1]])
   ax.set_ylim([tj_vec[0], tj_vec[-1]])
   plt.xlabel("x")
-  plt.ylabel("T/J")
+  plt.ylabel("T")
   plt.legend(labels=["Delta = "+ str(Delta)])
   plt.plot(x_vec, 1-x_vec, color="black")
   plt.scatter(2/3, 1/3, c='mediumseagreen', marker='+', s=150)
@@ -58,7 +58,7 @@ def sweep_x(
   ax.set_xlim([x_vec[0], x_vec[-1]])
   ax.set_ylim([tj_vec[0], tj_vec[-1]])
   plt.xlabel("x")
-  plt.ylabel("T/J")
+  plt.ylabel("T")
   plt.legend(labels=["Delta = "+ str(Delta)])
   plt.plot(x_vec, 1-x_vec, color="black")
   plt.scatter(2/3, 1/3, c='mediumseagreen', marker='+', s=150)
@@ -422,7 +422,7 @@ def run(
     plot_heatmap(Delta_treated, name="Delta_bare"+suffix+".pdf", levels=[0.4763])
 
     plt.clf()
-    tj_list = np.array([25, 145, 265])
+    tj_list = np.array([25, 147, 265])
     gnuplot = mpl.colormaps["gnuplot"]
     scaled = (tj_list - tj_list.min()) / (tj_list.max()-tj_list.min()) * 0.8
     for iii, tj_idx in enumerate(tj_list):
@@ -431,7 +431,8 @@ def run(
       plt.ylabel(r"$\Delta$")
     ax = plt.gca()
     ax.set_ylim([-0.5, 1.5])
-    plt.legend([r'$T/J = {:.2f}$'.format(tj_vec[_]) for _ in tj_list])
+    plt.scatter(2/3, 2/3*np.log(2), c='red', marker='x', s=100)
+    plt.legend([r'$T = {:.2f}$'.format(tj_vec[_]) for _ in tj_list])
     plt.savefig("media/isotherms.pdf", format="pdf", bbox_inches='tight')
     
 
@@ -480,7 +481,7 @@ def run(
     plt.ylabel(r"$\Delta$")
     ax = plt.gca()
     ax.set_ylim([-0.5, 1.5])
-    plt.legend([r'$T/J = {:.2f}$'.format(tj_vec[it]) ,r'$\Delta = {:.2f}$'.format(select_level)])
+    plt.legend([r'$T = {:.2f}$'.format(tj_vec[it]) ,r'$\Delta = {:.2f}$'.format(select_level)])
     plt.savefig("media/maxwell.pdf", format="pdf", bbox_inches='tight')
 
     bDelta =  np.zeros_like(Delta_treated)
