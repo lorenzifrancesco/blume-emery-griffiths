@@ -419,7 +419,7 @@ def run(
     [M, Delta_treated, bA, bB, bC] = matrices
     suffix = '_' + K_over_J.__str__().replace(".", "_")
     plot_heatmap(M, name="M"+suffix+".pdf", levels=[], title=r"$M$")
-    plot_heatmap(Delta_treated, name="Delta_bare"+suffix+".pdf", levels=[0.4763])
+    plot_heatmap(Delta_treated, name="Delta_bare"+suffix+".pdf", levels=[0.4763], clamp = [-0.2, 0.9] )
 
     plt.clf()
     tj_list = np.array([25, 147, 265])
