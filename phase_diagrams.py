@@ -34,6 +34,7 @@ def sweep_T(
   plt.savefig("media/sweep_T_"+str(Delta)+".pdf", format="pdf", bbox_inches='tight')
   return
 
+
 def sweep_x(
     Delta=0.1,
     N=200, 
@@ -159,6 +160,7 @@ def compute_parameters(
     bC = np.load('bC_matrix'+suffix+'.npy')
   return [M, Delta, bA, bB, bC]
 
+
 def compute_Mx(
     N=400, 
     K_over_J=0.0,
@@ -224,31 +226,6 @@ def compute_Mx(
   return [M, x]
 
    
-def plot_implicit(fn, bbox=(-2.5,2.5)):
-    xmin, xmax, ymin, ymax, zmin, zmax = bbox*3
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    A = np.linspace(xmin, xmax, 100) # resolution of the contour
-    B = np.linspace(xmin, xmax, 15) # number of slices
-    A1,A2 = np.meshgrid(A,A) # grid on which the contour is plotted
-    for z in B: # plot contours in the XY plane
-        X,Y = A1,A2
-        Z = fn(X,Y,z)
-        cset = ax.contour(X, Y, Z+z, [z], zdir='z')
-        # [z] defines the only level to plot for this contour for this value of z
-    for y in B: # plot contours in the XZ plane
-        X,Z = A1,A2
-        Y = fn(X,y,Z)
-        cset = ax.contour(X, Y+y, Z, [y], zdir='y')
-    for x in B: # plot contours in the YZ plane
-        Y,Z = A1,A2
-        X = fn(x,Y,Z)
-        cset = ax.contour(X+x, Y, Z, [x], zdir='x')
-    ax.set_zlim3d(zmin,zmax)
-    ax.set_xlim3d(xmin,xmax)
-    ax.set_ylim3d(ymin,ymax)
-
-
 def process_Delta(
       Delta, 
       spinodal = True,
@@ -327,9 +304,9 @@ def process_Delta(
               prev = Delta[it, ix]-select_level
               ix += 1
             
-          print(intersections)
-          for ii in intersections:
-            Delta[it, ii] = 99
+          # print(intersections)
+          # for ii in intersections:
+          #   Delta[it, ii] = 99
           if len(intersections) == 3:
             counter[2] +=1
             print("\rFound 3 intersections...")
@@ -370,7 +347,7 @@ def process_Delta(
           else:
             top = select_level 
           select_level = (bottom + top) / 2
-        # Delta[it, lx_point:rx_point] = select_level
+        Delta[it, lx_point:rx_point] = select_level
         separation[it, lx_point] = 1
         separation[it, rx_point] = 1
     print("number of hits: ", counter)
@@ -529,11 +506,10 @@ def run(
                  clamp = [0.])
     plot_heatmap(Delta_treated,    
                  name="Delta_heat"+suffix+".pdf", 
-                 levels = [0.0], 
-                 midline=False, 
+                 levels = [0.4763], 
                  clamp = clampD)
     plot_heatmap(spinodal+separation,    
-                 name="lines"+suffix+".pdf", 
+                 name="spinodal"+suffix+".pdf", 
                  levels=None,
                  midline=False)
   return

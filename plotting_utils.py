@@ -70,7 +70,7 @@ def plot_heatmap(mat,
   except:
     pass
   print(label_try)
-  plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=levels, linewidths=[0.5], extent=extent, label="label_try")
+  plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=levels, linewidths=[0.5], extent=extent)
   if midline:
     # beware, this goes beyond the bottom line
     plt.plot(x_vec, np.clip(1-x_vec, tj_vec.min(), tj_vec.max()), linestyle="dotted", color="white")
