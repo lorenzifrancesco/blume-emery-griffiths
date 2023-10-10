@@ -2,7 +2,6 @@ import numpy as np
 from scipy.optimize import root
 from tqdm import tqdm
 import threading
-from numba import jit
 from plotting_utils import *
 from solver import *
 
@@ -256,7 +255,7 @@ def plot_implicit(fn, bbox=(-2.5,2.5)):
 def process_Delta(
       Delta, 
       spinodal = True,
-      debug = True, 
+      debug = False, 
       tj_max = 0.33, 
       discriminant=None):
   N = np.shape(Delta)[0]
@@ -292,19 +291,19 @@ def process_Delta(
   separation = np.zeros_like(Delta)
   skip = 0
   if isinstance(discriminant, type(None)):
-    print("\n\n--------------- Maxwellizing the Delta ---------------")
-    for it, tj in tqdm(enumerate(tj_vec[skip:N_max]), ascii=' >='):
+    print("\n\n--------------- Maxwellizing the Delta ---------------\n")
+    for it in tqdm(range(len(tj_vec[skip:N_max]))):
       it += skip
       locations = (np.diff(np.sign(Delta_dx[it, :])) != 0)*1
       stationary = np.where(locations == 1)[0]
       if debug:
         plt.plot(x_vec, Delta_dx[it, :])
         plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
-        print("stationary:", stationary)
+        print("\033[F\33[2K\rstationary:", stationary)
         plt.scatter(x_vec[stationary], Delta_dx[it, stationary], color="red")
         plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
       if len(stationary) < 2:
-        print("didn't find two stationary point, passing to next temp...")
+        print("\033[F\33[2K\rdidn't  two stationary point, passing to next temp...")
       else:
         if len(stationary)>2:
           # select only first and last
@@ -320,18 +319,18 @@ def process_Delta(
         for i in list(range(4)):
           intersections = np.where((np.diff(np.sign(Delta[it, :] - select_level)) != 0)*1 == 1)[0]
           if len(intersections) == 3:
-            # print("Found 3 intersections...")
+            print("\033[F\33[2K\rFound 3 intersections...")
             lx_point = intersections[0]
             md_point = intersections[1]
             rx_point = intersections[2]
           elif len(intersections) == 1:
-            print("Insufficient number of intersections, breaking...")
+            print("\033[F\33[2K\rInsufficient number of intersections, breaking...")
             break
             lx_point = 0
             md_point = intersections[0]
             rx_point = N-1
           elif len(intersections) == 2:
-            print("Insufficient number of intersections, breaking...")
+            print("\033[F\33[2K\rInsufficient number of intersections, breaking...")
             break
             if H_idx < intersections[1]: 
               lx_point = intersections[0]
@@ -450,7 +449,7 @@ def run(
 
 run(
   K_over_J_list=[2.88], 
-  N=200, 
+  N=500,
   reset=True
   )
 
