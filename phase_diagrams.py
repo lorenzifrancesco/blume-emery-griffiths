@@ -88,7 +88,7 @@ def compute_parameters(
     print("\n============= start computing =============")
     # Define a worker function to fill the matrices
     def worker(start, end):
-        if K_over_J == 0:
+        if K_over_J > 1:
           vertical = True
         else: 
           vertical = False
@@ -97,7 +97,7 @@ def compute_parameters(
             x = x_vec[ix]
             # TODO: initial conditions are really sensible!!!
             # working for low K/J
-            start_point = [np.clip((1-x)*1.2, 0.0, 1.2), 0.5]
+            start_point = [np.clip((1-x)*1.2, 0.1, 1.2), 1.5]
             # working for high K/J
             # start_point = [(1-x)*1.2, 2]
             for it, tj in enumerate(tj_vec):
@@ -256,7 +256,7 @@ def plot_implicit(fn, bbox=(-2.5,2.5)):
 def process_Delta(
       Delta, 
       spinodal = True,
-      debug = False, 
+      debug = True, 
       tj_max = 0.33, 
       discriminant=None):
   N = np.shape(Delta)[0]
@@ -298,16 +298,17 @@ def process_Delta(
       locations = (np.diff(np.sign(Delta_dx[it, :])) != 0)*1
       stationary = np.where(locations == 1)[0]
       if debug:
-        plt.plot(x_vec, Delta[it, :])
+        plt.plot(x_vec, Delta_dx[it, :])
         plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
         print("stationary:", stationary)
-      if len(stationary) != 2:
+        plt.scatter(x_vec[stationary], Delta_dx[it, stationary], color="red")
+        plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
+      if len(stationary) < 2:
         print("didn't find two stationary point, passing to next temp...")
       else:
-        if debug:
-          plt.scatter(x_vec[stationary], Delta[it, stationary], color="red")
-          plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
-
+        if len(stationary)>2:
+          # select only first and last
+          stationary = [stationary[0], stationary[-1]]
         H_idx = stationary[0]
         L_idx = stationary[1]
         top = Delta[it, H_idx]
@@ -318,7 +319,6 @@ def process_Delta(
         rx_point = N-1
         for i in list(range(4)):
           intersections = np.where((np.diff(np.sign(Delta[it, :] - select_level)) != 0)*1 == 1)[0]
-          print(intersections)
           if len(intersections) == 3:
             # print("Found 3 intersections...")
             lx_point = intersections[0]
@@ -427,7 +427,7 @@ def run(
     suffix = '_' + K_over_J.__str__().replace(".", "_")
 
     print("\n============= plotting =============")
-    clampD = [0.0, 1] 
+    clampD = [1.8, 2.2] 
     plot_contour(Delta_treated,    
                  name="Delta"+suffix+".pdf", 
                  levels=400, 
@@ -449,7 +449,7 @@ def run(
 
 
 run(
-  K_over_J_list=[3.8], 
+  K_over_J_list=[2.88], 
   N=200, 
   reset=True
   )
