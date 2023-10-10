@@ -2,11 +2,11 @@ import numpy as np
 from scipy.optimize import root
 from tqdm import tqdm
 import threading
-from numba import jit
 from plotting_utils import *
 from solver import *
-
+from multiprocessing import Pool, Process
 import matplotlib.pyplot as plt
+from functools import partial
 
 def sweep_T(
     Delta = 0.1,
@@ -252,29 +252,19 @@ def plot_implicit(fn, bbox=(-2.5,2.5)):
     ax.set_xlim3d(xmin,xmax)
     ax.set_ylim3d(ymin,ymax)
 
-
-def process_Delta(
-      Delta, 
-      spinodal = True,
+def process_Delta_partial(      
+      Delta,       
+      separation, 
+      spinodal, 
+      x_vec, 
+      tj_vec, 
+      Delta_dx,
       debug = True, 
-      tj_max = 0.33, 
-      discriminant=None):
-  N = np.shape(Delta)[0]
-  N_max = int(np.ceil(N*tj_max))
-  # find the spinodal
-  [tj_vec, x_vec] = get_arrays(N=N)
-  Delta_dx = np.zeros_like(Delta)
-  for ix, x in enumerate(x_vec[1:]):
-    ix += 1
-    Delta_dx[:, ix] = Delta[:, ix]-Delta[:, ix-1]
-  Delta_dx[:, 0] = Delta_dx[:, 1]
-
-
-  # find the spinodal line
-  spinodal = np.zeros_like(Delta)
+      start=0,
+      end=1):
   change_sign = 1
   print("\n\n--------------- Finding spinodal ---------------")
-  for it, tj in tqdm(enumerate(tj_vec[:N_max]), ascii=' >='):
+  for it, tj in tqdm(enumerate(tj_vec[start:end]), ascii=' >='):
     for ix, x in enumerate(x_vec[1:]):
       ix += 1
       change_sign = Delta_dx[it, ix] * Delta_dx[it, ix-1]
@@ -287,13 +277,8 @@ def process_Delta(
           ix += 1
         spinodal[it, ix] = 1
         break
-
-  # find the phase separation
-  separation = np.zeros_like(Delta)
-  skip = 0
-  if isinstance(discriminant, type(None)):
     print("\n\n--------------- Maxwellizing the Delta ---------------")
-    for it, tj in tqdm(enumerate(tj_vec[skip:N_max]), ascii=' >='):
+    for it, tj in tqdm(enumerate(tj_vec[start:end]), ascii=' >='):
       it += skip
       locations = (np.diff(np.sign(Delta_dx[it, :])) != 0)*1
       stationary = np.where(locations == 1)[0]
@@ -351,32 +336,42 @@ def process_Delta(
         Delta[it, lx_point:rx_point] = select_level
         separation[it, lx_point] = 1
         separation[it, rx_point] = 1
-  else:
-    for it, tj in tqdm(enumerate(tj_vec[skip:N_max]), ascii=' >='):
-      # detect a change of sign in the discriminant
-      locations = (np.diff(np.sign(discriminant[it, :])) != 0)*1
-      start_point = np.where(locations == 1)[0]
-      print("start:", start_point)
-      start_point=start_point[0]
+  return
 
-      # select the Delta value at the change of sign
-      value = Delta[it, start_point]
-      # find the endpoint and flatten
-      ix = start_point + 1
-      while ix<N and Delta[it, ix] - value > 0 :
-        Delta[it, ix] = value
-        ix += 1
-      
-      if ix<N:
-        ix += 1 
-        Delta[it, ix] = value
-
-        while ix<N and Delta[it, ix] - value < 0:
-          Delta[it, ix] = value
-          ix += 1
+def process_Delta(
+      Delta, 
+      spinodal = True,
+      debug = True, 
+      tj_max = 0.33, 
+      discriminant=None):
+  N = np.shape(Delta)[0]
+  N_max = int(np.ceil(N*tj_max))
+  # find the spinodal
+  [tj_vec, x_vec] = get_arrays(N=N)
+  Delta_dx = np.zeros_like(Delta)
+  for ix, x in enumerate(x_vec[1:]):
+    ix += 1
+    Delta_dx[:, ix] = Delta[:, ix]-Delta[:, ix-1]
+  Delta_dx[:, 0] = Delta_dx[:, 1]
+  # find the spinodal line
+  spinodal = np.zeros_like(Delta)
+  # find the phase separation
+  separation = np.zeros_like(Delta)
+  partial(start, end) = process_Delta_partial(
+      Delta,       
+      separation, 
+      spinodal, 
+      x_vec, 
+      tj_vec, 
+      Delta_dx,
+      debug = True, 
+      start=start,
+      end=end
+  )
+  with Pool(5) as p:
+    p.map(process_Delta_fraction(), )
 
   return Delta, spinodal, separation
-
 
 def run(  
     K_over_J_list = [0.0, 2.88],
