@@ -22,8 +22,8 @@ def get_M_Delta(tj, x, bK, prev):
   def eqs(pars):
     M, Delta = pars
     return [
-      1-x - 2*np.cosh(M/tj)/(np.exp(Delta/tj - bK*(1-x)) +2*np.cosh(M/tj)),
-      M - 2*np.sinh(M/tj)/(np.exp(Delta/tj - bK*(1-x)) +2*np.cosh(M/tj)),
+      1-x - 2*np.cosh(M/tj)/(np.exp(Delta/tj - bK*(1-x), dtype=np.float128) +2*np.cosh(M/tj)),
+      M - 2*np.sinh(M/tj)/(np.exp(Delta/tj - bK*(1-x), dtype=np.float128) +2*np.cosh(M/tj)),
     ] 
   initial_guesses = prev
   root_solution = root(eqs, initial_guesses)

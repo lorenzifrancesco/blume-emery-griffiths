@@ -48,7 +48,8 @@ def plot_heatmap(mat,
                  type="normal", 
                  levels = [0.0], 
                  midline=True, 
-                 x_name = r"$x$", 
+                 x_name = r"$x$",
+                 title=r"$\Delta$",
                  clamp = [-10, 10]):
   N = np.shape(mat)[0]
   if type=="normal":
@@ -59,12 +60,13 @@ def plot_heatmap(mat,
   fig, ax = plt.subplots()
   mat = np.clip(mat, clamp[0], clamp[1])
   plt.imshow(np.flip(mat, axis = 0), extent = extent, cmap='hot', interpolation='nearest', vmin=np.min(mat), vmax=np.max(mat))
-  plt.colorbar()
+  cbar = plt.colorbar()
+  cbar.set_label(title, rotation=0)
   # SET THE CORRECT LEVELS
   plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=levels, linewidths=[0.5], extent=extent)
   if midline:
     # beware, this goes beyond the bottom line
-    plt.plot(tj_vec, 1-tj_vec, linestyle="dotted", color="white")
+    plt.plot(x_vec, np.clip(1-x_vec, tj_vec.min(), tj_vec.max()), linestyle="dotted", color="white")
 
   plt.scatter(2/3, 1/3, c='mediumseagreen', marker='+', s=150)
   # plt.plot(tj_vec, np.ones_like(x_vec)*1/3, color="green")
@@ -87,7 +89,8 @@ def plot_contour(mat,
                  type="normal", 
                  levels = 200,
                  K_over_J = 0.0, 
-                 clamp = [-10, 10]):
+                 clamp = [-10, 10], 
+                 title=r"$\Delta$"):
   N = np.shape(mat)[0]
   if type=="normal":
     [tj_vec, x_vec] = get_arrays(N=N)
@@ -98,13 +101,14 @@ def plot_contour(mat,
   # np.clip(mat, clamp[0], clamp[1])
   plt.contour(x_vec, tj_vec, mat, levels=levels, extent=extent)
   plt.scatter(2/3, 1/3, c='red', marker='+')
-  plt.xlabel('x')
-  plt.ylabel('T/J')
+  plt.xlabel(r'$x$')
+  plt.ylabel(r'$T/J$')
   number_of_ticks = 7
   skip = int(np.round(N/number_of_ticks))
   plt.xticks(ticks=x_vec[::skip],  labels=[r'${:.2f}$'.format(x) for x in x_vec[::skip]])
   plt.yticks(ticks=tj_vec[::skip], labels=[r'${:.2f}$'.format(x) for x in tj_vec[::skip]])
-  plt.colorbar()
+  cbar = plt.colorbar()
+  cbar.set_label(title, rotation=0)
   # plt.title(name[:-4])
   if False:
     plt.show()
