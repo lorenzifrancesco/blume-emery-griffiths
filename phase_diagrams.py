@@ -564,7 +564,7 @@ def run(
     separation_heigth[0] = 0.0
     
     ix = 0
-    lenN = len(x_vec[1:-10])
+    lenN = len(x_vec)-1
     while ix < lenN:
       cnt = 1
       while ix+cnt<lenN and np.abs(spinodal_heigth[ix+cnt]-spinodal_heigth[ix]) > 90:
@@ -588,9 +588,11 @@ def run(
       ix += cnt
     
     plt.plot(x_vec, separation_heigth, label=r"First order transition", lw = 0.5)
-    plt.plot(x_vec, spinodal_heigth, label=r"Spinodal line", lw = 0.5, ls="dashed")
-    stopx = int(round(N * 0.67))
+    # plt.plot(x_vec, spinodal_heigth, label=r"Spinodal line", lw = 0.5, ls="dashed")
+    stopx = int(round(N * 0.23))
     plt.plot(x_vec[:stopx], 1-x_vec[:stopx], label=r"Second order transition", lw = 0.5)
+    plt.plot(x_vec, 0.703*np.ones_like(x_vec), label=r"Triple point $T$", lw = 0.5, ls="dotted", color="grey")
+
     plt.xlabel(r"$x$")
     plt.ylabel(r"$T$")
     ax = plt.gca()
