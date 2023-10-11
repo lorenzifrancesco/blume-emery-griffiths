@@ -605,9 +605,9 @@ def run(
 
 
 run(
-  K_over_J_list=[2.88],
+  K_over_J_list=[4.2],
   N=1000,
-  reset=False
+  reset=True
   )
 
 
