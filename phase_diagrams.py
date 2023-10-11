@@ -562,28 +562,31 @@ def run(
     separation_heigth[separation_heigth<0.2] = -100
     spinodal_heigth[0] = 0.0
     separation_heigth[0] = 0.0
-
-    sp_plus = spinodal_heigth
-    sp_minu = spinodal_heigth
-    se_plus = separation_heigth
-    se_minu = separation_heigth
+    spinodal_heigth[N-1] = 0.0
+    separation_heigth[N-1] = 0.0
+    sp_plus = np.array(spinodal_heigth, copy=True)
+    sp_minu = np.array(spinodal_heigth, copy=True)
+    se_plus = np.array(separation_heigth, copy=True)
+    se_minu = np.array(separation_heigth, copy=True)
 
     for ix in range(len(x_vec[1:])):
       ix += 1
-      if np.abs(spinodal_heigth[ix]-spinodal_heigth[ix-1]) > 90:
-        sp_plus[ix] = spinodal_heigth[ix-1]
-      if np.abs(separation_heigth[ix]-separation_heigth[ix-1]) > 90:
-        se_plus[ix] = separation_heigth[ix-1]
+      if np.abs(sp_plus[ix]-sp_plus[ix-1]) > 90:
+        sp_plus[ix] = sp_plus[ix-1]
+      if np.abs(se_plus[ix]-se_plus[ix-1]) > 90:
+        se_plus[ix] = se_plus[ix-1]
 
-    for ix in range(len(x_vec[1::])):
+    for ix in range(len(x_vec[1:])):
+      ix += 1
       ix = N-1-ix
-      if np.abs(spinodal_heigth[ix]-spinodal_heigth[ix-1]) > 90:
-        sp_minu[ix] = spinodal_heigth[ix-1]
-      if np.abs(separation_heigth[ix]-separation_heigth[ix-1]) > 90:
-        se_minu[ix] = separation_heigth[ix-1]
+      if np.abs(sp_minu[ix]-sp_minu[ix+1]) > 90:
+        sp_minu[ix] = sp_minu[ix+1]
+      if np.abs(se_minu[ix]-se_minu[ix+1]) > 90:
+        se_minu[ix] = se_minu[ix+1]
 
     spinodal_heigth = (sp_minu+sp_plus)/2 
-    separation_heigth = (se_minu+se_plus)/2 
+    separation_heigth = (se_minu+se_plus)/2
+
     plt.plot(x_vec, separation_heigth, label=r"First order transition", lw = 0.5)
     plt.plot(x_vec, spinodal_heigth, label=r"Spinodal line", lw = 0.5, ls="dashed")
     stopx = int(round(N * 0.67))
