@@ -4,6 +4,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.colors as mcolors
 import matplotlib as mpl
 import numpy as np
+import matplotlib.ticker as mticker
 from ranges import *
 # WARN: since Colab cannot find the LaTeX library, in the plot preparation phase
 # it is better to have the script in local and uncomment the following lines for
@@ -60,7 +61,13 @@ def plot_heatmap(mat,
   fig, ax = plt.subplots()
   mat = np.clip(mat, clamp[0], clamp[1])
   plt.imshow(np.flip(mat, axis = 0), extent = extent, cmap='hot', interpolation='nearest', vmin=np.min(mat), vmax=np.max(mat))
-  cbar = plt.colorbar()
+  lowl = np.max([clamp[0], np.min(mat)])
+  higl = np.min([clamp[1], np.max(mat)])
+  cbar = plt.colorbar(
+                    ticks=[lowl, higl]+levels,
+                    format=mticker.FixedFormatter([r"$<{:.2f}$".format(lowl), r"$>{:.2f}$".format(higl)]+[r"${:.2f}$".format(_) for _ in levels]),
+                    extend='both'
+                    )  
   cbar.set_label(title, rotation=0)
   # TODO REMOVE THE LABEL NONSENSE
   label_try=0.0
@@ -73,7 +80,7 @@ def plot_heatmap(mat,
   plt.contour(x_vec, tj_vec, mat, colors='cyan',  levels=levels, linewidths=[0.5], extent=extent)
   if midline:
     # beware, this goes beyond the bottom line
-    plt.plot(x_vec, np.clip(1-x_vec, tj_vec.min(), tj_vec.max()), linestyle="dotted", color="white")
+    plt.plot(x_vec, np.clip(1-x_vec, tj_vec.min(), tj_vec.max()), linestyle="dotted", color="white", lw=1)
 
   plt.scatter(2/3, 1/3, c='blue', marker='+', lw=0.5, s=200)
   # plt.plot(tj_vec, np.ones_like(x_vec)*1/3, color="green")

@@ -6,6 +6,9 @@ from plotting_utils import *
 from solver import *
 
 import matplotlib.pyplot as plt
+from matplotlib import rc
+rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
+rc('text', usetex=True)
 
 def sweep_T(
     Delta = 0.1,
@@ -289,7 +292,7 @@ def process_Delta(
         # run a certain number of bisections
         lx_point = 0
         rx_point = N-1
-        for i in list(range(4)):
+        for i in list(range(10)):
           # intersections = np.where((np.diff(np.sign(Delta[it, :] - select_level)) != 0)*1 == 1)[0]
           intersections = []
           prev = Delta[it, 0]-select_level
@@ -400,6 +403,7 @@ def run(
 
     plt.clf()
     tj_list = np.array([25, 147, 265])
+    tj_list = np.clip(tj_list, 0, np.shape(Delta_treated)[0]-1)
     gnuplot = mpl.colormaps["gnuplot"]
     scaled = (tj_list - tj_list.min()) / (tj_list.max()-tj_list.min()) * 0.8
     for iii, tj_idx in enumerate(tj_list):
@@ -494,6 +498,7 @@ def run(
         tj_max = tj_max,
         discriminant = None
         )
+      print(np.shape(separation))
     else:
       Delta_treated = matrices[1]
     
@@ -504,20 +509,69 @@ def run(
                  name="Delta_contour"+suffix+".pdf", 
                  levels=np.linspace(-0.5, 1.5, 50), 
                  clamp = [0.])
+    plot_heatmap(a,
+                 name="a"+suffix+".pdf", 
+                 levels=[0.0], 
+                 clamp = [-0.2, 0.4])
+    plot_heatmap(discriminant,
+                 name="discriminant"+suffix+".pdf", 
+                 levels=[0.0], 
+                 clamp = [-0.2, 0.2])
     plot_heatmap(Delta_treated,    
                  name="Delta_heat"+suffix+".pdf", 
                  levels = [0.4763], 
                  clamp = clampD)
-    plot_heatmap(spinodal+separation,    
-                 name="spinodal"+suffix+".pdf", 
-                 levels=None,
-                 midline=False)
+    plt.clf()
+    print(np.shape(x_vec))
+    print(np.shape(tj_vec))
+    print(np.shape(spinodal))
+    spinodal_heigth = np.ones_like(x_vec) * -10
+    separation_heigth = np.ones_like(x_vec) * -10
+    for ix in range(len(x_vec)):
+      spin_try = np.where(spinodal[:, ix] == 1)[0] 
+      sepa_try = np.where(separation[:, ix] == 1)[0] 
+      if len(spin_try) > 0:
+        spinodal_heigth[ix] = tj_vec[spin_try[0]]
+      if len(sepa_try) > 0:
+        separation_heigth[ix] = tj_vec[sepa_try[0]]
+    # # normalize
+    # spinodal_heigth   *= 1/N
+    # separation_heigth *= 1/N
+    # # add step
+    # spinodal_heigth   += tj_vec[0]
+    # separation_heigth += tj_vec[0]
+    # remove the zero points
+    spinodal_heigth[0] = 0.0
+    separation_heigth[0] = 0.0
+    for ix in range(len(x_vec[1:])):
+      ix += 1
+      # if spinodal_heigth[ix] == -1:
+      #   spinodal_heigth[ix] = (spinodal_heigth[ix-1]+spinodal_heigth[ix+1])/2
+      # if separation_heigth[ix] == -1:
+      #   separation_heigth[ix] = (separation_heigth[ix-1]+separation_heigth[ix+1])/2
+      if np.abs(spinodal_heigth[ix]-spinodal_heigth[ix-1]) > 9:
+        spinodal_heigth[ix] = spinodal_heigth[ix-1]
+      if np.abs(separation_heigth[ix]-separation_heigth[ix-1]) > 5:
+        separation_heigth[ix] = separation_heigth[ix-1]
+
+    plt.plot(x_vec, separation_heigth, label=r"First order transition", lw = 0.5)
+    plt.plot(x_vec, spinodal_heigth, label=r"Spinodal line", lw = 0.5, ls="dashed")
+    stopx = int(round(N * 0.67))
+    plt.plot(x_vec[:stopx], 1-x_vec[:stopx], label=r"Second order transition", lw = 0.5)
+    plt.xlabel(r"$x$")
+    plt.ylabel(r"$T$")
+    ax = plt.gca()
+    ax.set_xlim([x_vec[0], x_vec[-1]])
+    ax.set_ylim([tj_vec[0], tj_vec[-1]])
+    plt.legend(loc="best")
+    plt.savefig("media/lines.pdf", format="pdf", bbox_inches='tight')
+
   return
 
 
 run(
   K_over_J_list=[0.0],
-  N=500,
+  N=1000,
   reset=False
   )
 
