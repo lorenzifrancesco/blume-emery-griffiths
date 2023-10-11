@@ -234,150 +234,170 @@ def process_Delta(
       spinodal = True,
       debug = False, 
       tj_max = 0.33, 
-      discriminant=None):
+      discriminant=None,
+      K_over_J = 0.0, 
+      reset = False):
   N = np.shape(Delta)[0]
-  N_max = int(np.ceil(N*tj_max))
-  # find the spinodal
-  [tj_vec, x_vec] = get_arrays(N=N)
-  Delta_dx = np.zeros_like(Delta)
-  for ix, x in enumerate(x_vec[1:]):
-    ix += 1
-    Delta_dx[:, ix] = Delta[:, ix]-Delta[:, ix-1]
-  Delta_dx[:, 0] = Delta_dx[:, 1]
-
-
-  # find the spinodal line
-  spinodal = np.zeros_like(Delta)
-  change_sign = 1
-  print("\n\n--------------- Finding spinodal ---------------")
-  for it, tj in tqdm(enumerate(tj_vec[:N_max]), ascii=' >='):
+  suffix = '_' + K_over_J.__str__().replace(".", "_")
+  
+  if not os.path.isfile('Beautiful'+suffix+'.npy') or reset:
+    N_max = int(np.ceil(N*tj_max))
+    # find the spinodal
+    [tj_vec, x_vec] = get_arrays(N=N)
+    Delta_dx = np.zeros_like(Delta)
     for ix, x in enumerate(x_vec[1:]):
       ix += 1
-      change_sign = Delta_dx[it, ix] * Delta_dx[it, ix-1]
-      if change_sign < 0.0:
-        ix += 1
-        # mem = Delta[it, ix]      
-        spinodal[it, ix] = 1
+      Delta_dx[:, ix] = Delta[:, ix]-Delta[:, ix-1]
+    Delta_dx[:, 0] = Delta_dx[:, 1]
 
-        while Delta_dx[it, ix] * Delta_dx[it, ix-1] > 0:
+
+    # find the spinodal line
+    spinodal = np.zeros_like(Delta)
+    change_sign = 1
+    print("\n\n--------------- Finding spinodal ---------------")
+    for it, tj in tqdm(enumerate(tj_vec[:N_max]), ascii=' >='):
+      for ix, x in enumerate(x_vec[1:]):
+        ix += 1
+        change_sign = Delta_dx[it, ix] * Delta_dx[it, ix-1]
+        if change_sign < 0.0:
           ix += 1
-        spinodal[it, ix] = 1
-        break
+          # mem = Delta[it, ix]      
+          spinodal[it, ix] = 1
 
-  # find the phase separation
-  separation = np.zeros_like(Delta)
-  skip = 0
-  if isinstance(discriminant, type(None)):
-    counter = np.zeros(100)
-    print("\n\n--------------- Maxwellizing the Delta ---------------\n")
-    for it in tqdm(range(len(tj_vec[skip:N_max]))):
-      it += skip
-      locations = (np.diff(np.sign(Delta_dx[it, :])) != 0)*1
-      stationary = np.where(locations == 1)[0]
-      if debug:
-        plt.plot(x_vec, Delta_dx[it, :])
-        plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
-        print("\rstationary:", stationary)
-      if len(stationary) < 2:
-        print("\rdidn't  two stationary point, passing to next temp...")
-      else:
-        if len(stationary)>2:
-          # select only first and last
-          stationary = [stationary[0], stationary[-1]]
-        H_idx = stationary[0]
-        L_idx = stationary[1]
-        top = Delta[it, H_idx]
-        bottom = Delta[it, L_idx]
-        select_level = (top + bottom)/2
-        # run a certain number of bisections
-        lx_point = 0
-        rx_point = N-1
-        for i in list(range(10)):
-          # intersections = np.where((np.diff(np.sign(Delta[it, :] - select_level)) != 0)*1 == 1)[0]
-          intersections = []
-          prev = Delta[it, 0]-select_level
-          ix = 0
-          while ix < len(x_vec):
-            if (Delta[it, ix]-select_level) * prev < 0:
-              intersections.append(ix)
-              for _ in range(1): # backoff for 5 steps
-                ix += 1
-              prev = Delta[it, np.min([ix, N-1])]-select_level
-            else:
-              prev = Delta[it, ix]-select_level
-              ix += 1
-            
-          # print(intersections)
-          # for ii in intersections:
-          #   Delta[it, ii] = 99
-          if len(intersections) == 3:
-            counter[2] +=1
-            print("\rFound 3 intersections...")
-            lx_point = intersections[0]
-            md_point = intersections[1]
-            rx_point = intersections[2]
-          elif len(intersections) == 1:
-            print("\rInsufficient number of intersections, breaking...")
-            lx_point = L_idx
-            rx_point = H_idx
-            counter[0] +=1
-            break
-            lx_point = 0
-            md_point = intersections[0]
-            rx_point = N-1
-          elif len(intersections) == 2:
-            counter[1] +=1
-            print("\r 2 intersections, managing...")
-            if H_idx < intersections[1]: 
-              lx_point = intersections[0]
-              md_point = intersections[1]
-              rx_point = N-1
-            else:
-              lx_point = 0
-              md_point = intersections[0]
-              rx_point = intersections[1]
-          else:
-            counter[len(intersections)] +=1
-            print("\r More than 3 intersections?? dropping last one...")
-            intersections = intersections[:-1]
-            lx_point = intersections[0]
-            md_point = intersections[1]
-            rx_point = intersections[2]
-          lx_sum = np.sum(Delta[it, lx_point:md_point] - select_level)
-          rx_sum = np.sum(select_level - Delta[it, md_point:rx_point])
-          if lx_sum > rx_sum:
-            bottom = select_level
-          else:
-            top = select_level 
-          select_level = (bottom + top) / 2
-        Delta[it, lx_point:rx_point] = select_level
-        separation[it, lx_point] = 1
-        separation[it, rx_point] = 1
-    print("number of hits: ", counter)
-  else:
-    for it, tj in tqdm(enumerate(tj_vec[skip:N_max]), ascii=' >='):
-      # detect a change of sign in the discriminant
-      locations = (np.diff(np.sign(discriminant[it, :])) != 0)*1
-      start_point = np.where(locations == 1)[0]
-      print("start:", start_point)
-      start_point=start_point[0]
+          while Delta_dx[it, ix] * Delta_dx[it, ix-1] > 0:
+            ix += 1
+          spinodal[it, ix] = 1
+          break
 
-      # select the Delta value at the change of sign
-      value = Delta[it, start_point]
-      # find the endpoint and flatten
-      ix = start_point + 1
-      while ix<N and Delta[it, ix] - value > 0 :
-        Delta[it, ix] = value
-        ix += 1
-      
-      if ix<N:
-        ix += 1 
-        Delta[it, ix] = value
+    Delta_dx[it, ix] = 99 # number greater than zero
+    # find the phase separation
+    separation = np.zeros_like(Delta)
+    skip = 0
+    if isinstance(discriminant, type(None)):
+      counter = np.zeros(100)
+      print("\n\n--------------- Maxwellizing the Delta ---------------\n")
+      for it in tqdm(range(len(tj_vec[skip:N_max]))):
+        it += skip
+        locations = (np.diff(np.sign(Delta_dx[it, :])) != 0)*1
+        stationary = np.where(locations == 1)[0]
+        if debug:
+          plt.clf()
+          plt.plot(x_vec, Delta_dx[it, :])
+          plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
+          print("\rstationary:", stationary)
+        if len(stationary) < 2:
+          print("\rdidn't  two stationary point, passing to next temp...")
+        else:
+          if len(stationary) % 2 != 0:
+            print("\rOdd number of stationary points, dropping the last...")
+            stationary = stationary[:-1]
+          
+          # iterate Maxwell over all couples of stationary points
+          stationary_all = stationary
+          stationary_aux = np.concatenate(([0], stationary_all, [N]))
+          print("no of stationary points:", len(stationary_aux))
+          for idx in range(int(len(stationary_all)/2)):  
+            extremes = [stationary_aux[2*idx], N]
+            stationary = [stationary_all[2*idx], stationary_all[2*idx+1]]
+            H_idx = stationary[0]
+            L_idx = stationary[1]
+            top = Delta[it, H_idx]
+            bottom = Delta[it, L_idx]
+            select_level = (top + bottom)/2
+            # run a certain number of bisections
+            lx_point = 66
+            rx_point = 80
+            for i in list(range(40)):
+              # intersections = np.where((np.diff(np.sign(Delta[it, :] - select_level)) != 0)*1 == 1)[0]
+              intersections = []
+              prev = Delta[it, 0]-select_level
+              ix = extremes[0]
+              while ix < extremes[1]:
+                if (Delta[it, ix]-select_level) * prev < 0:
+                  intersections.append(ix)
+                  for _ in range(1): # backoff for 5 steps
+                    ix += 1
+                  prev = Delta[it, np.min([ix, N-1])]-select_level
+                else:
+                  prev = Delta[it, ix]-select_level
+                  ix += 1
+                
+              # print(intersections)
+              # for ii in intersections:
+              #   Delta[it, ii] = 99
+              counter[len(intersections)] +=1
+              if len(intersections) == 3:
+                print("\rFound 3 intersections...")
+                lx_point = intersections[0]
+                md_point = intersections[1]
+                rx_point = intersections[2]
+              elif len(intersections) <= 1:
+                print("\rInsufficient number of intersections, breaking...")
+                lx_point = 556
+                rx_point = 550
+                break
+                lx_point = 0
+                md_point = intersections[0]
+                rx_point = N-1
+              elif len(intersections) == 2:
+                print("\r 2 intersections, managing...")
+                if H_idx < intersections[1]: 
+                  lx_point = intersections[0]
+                  md_point = intersections[1]
+                  rx_point = N-1
+                else:
+                  lx_point = 0
+                  md_point = intersections[0]
+                  rx_point = intersections[1]
+              else:
+                # lx_point = L_idx
+                # rx_point = H_idx
+                # print("\r More than 3 intersections?? BREAKING !!!...")
+                # break
+                print("\r More than 3 intersections?? dropping last one...")
+                intersections = intersections[:-1]
+                print("diocane : ", len(intersections))
+                lx_point = intersections[0]
+                md_point = intersections[1]
+                rx_point = intersections[2]
+              lx_sum = np.sum(Delta[it, lx_point:md_point] - select_level)
+              rx_sum = np.sum(select_level - Delta[it, md_point:rx_point])
+              if lx_sum > rx_sum:
+                bottom = select_level
+              else:
+                top = select_level 
+              select_level = (bottom + top) / 2
+            Delta[it, lx_point:rx_point] = select_level
+            separation[it, lx_point] = 1
+            separation[it, rx_point] = 1
+      print("number of hits: ", counter)
+    else:
+      for it, tj in tqdm(enumerate(tj_vec[skip:N_max]), ascii=' >='):
+        # detect a change of sign in the discriminant
+        locations = (np.diff(np.sign(discriminant[it, :])) != 0)*1
+        start_point = np.where(locations == 1)[0]
+        print("start:", start_point)
+        start_point=start_point[0]
 
-        while ix<N and Delta[it, ix] - value < 0:
+        # select the Delta value at the change of sign
+        value = Delta[it, start_point]
+        # find the endpoint and flatten
+        ix = start_point + 1
+        while ix<N and Delta[it, ix] - value > 0 :
           Delta[it, ix] = value
           ix += 1
+        
+        if ix<N:
+          ix += 1 
+          Delta[it, ix] = value
 
+          while ix<N and Delta[it, ix] - value < 0:
+            Delta[it, ix] = value
+            ix += 1
+    np.save('Beautiful'+suffix+'.npy', (Delta, spinodal, separation))
+  else:
+    print("\n Loading the beautiful Delta...")
+    Delta, spinodal, separation = np.load('Beautiful'+suffix+'.npy')
   return Delta, spinodal, separation
 
 
@@ -399,7 +419,7 @@ def run(
     [M, Delta_treated, bA, bB, bC] = matrices
     suffix = '_' + K_over_J.__str__().replace(".", "_")
     plot_heatmap(M, name="M"+suffix+".pdf", levels=[], title=r"$M$")
-    plot_heatmap(Delta_treated, name="Delta_bare"+suffix+".pdf", levels=[0.4763], clamp = [-0.2, 0.9] )
+    plot_heatmap(Delta_treated, name="Delta_bare"+suffix+".pdf", levels=[0.4763], clamp = [2, 2.2] )
 
     plt.clf()
     tj_list = np.array([25, 147, 265])
@@ -417,53 +437,54 @@ def run(
     plt.savefig("media/isotherms.pdf", format="pdf", bbox_inches='tight')
     
 
-    plt.clf()
-    it = 20
-    tj_list = np.array([it])
-    gnuplot = mpl.colormaps["gnuplot"]
-    scaled = (tj_list - tj_list.min()) / (tj_list.max()-tj_list.min()) * 0.8
-    Ddx = np.diff(Delta_treated)
-    extremes = np.where((np.diff(np.sign(Ddx[it, :])) != 0)*1 == 1)[0]
-    assert len(extremes)==2
-    H_idx = extremes[0]
-    L_idx = extremes[1]
-    top = Delta_treated[it, H_idx]
-    bottom = Delta_treated[it, L_idx]
-    select_level = (top + bottom)/2
-    for _ in range(10):
-      intersections = []
-      prev = Delta_treated[it, 0]-select_level
-      ix = 0
-      while ix < len(x_vec):
-        if (Delta_treated[it, ix]-select_level) * prev < 0:
-          intersections.append(ix)
-          for _ in range(1): # backoff for 5 steps
+    if K_over_J == 0.0:
+      plt.clf()
+      it = 20
+      tj_list = np.array([it])
+      gnuplot = mpl.colormaps["gnuplot"]
+      scaled = (tj_list - tj_list.min()) / (tj_list.max()-tj_list.min()) * 0.8
+      Ddx = np.diff(Delta_treated)
+      extremes = np.where((np.diff(np.sign(Ddx[it, :])) != 0)*1 == 1)[0]
+      assert len(extremes)==2
+      H_idx = extremes[0]
+      L_idx = extremes[1]
+      top = Delta_treated[it, H_idx]
+      bottom = Delta_treated[it, L_idx]
+      select_level = (top + bottom)/2
+      for _ in range(10):
+        intersections = []
+        prev = Delta_treated[it, 0]-select_level
+        ix = 0
+        while ix < len(x_vec):
+          if (Delta_treated[it, ix]-select_level) * prev < 0:
+            intersections.append(ix)
+            for _ in range(1): # backoff for 5 steps
+              ix += 1
+            prev = Delta_treated[it, np.min([ix, N-1])]-select_level
+          else:
+            prev = Delta_treated[it, ix]-select_level
             ix += 1
-          prev = Delta_treated[it, np.min([ix, N-1])]-select_level
+        lx_point = intersections[0]
+        md_point = intersections[1]
+        rx_point = intersections[2]
+        lx_sum = np.sum(Delta_treated[it, lx_point:md_point] - select_level)
+        rx_sum = np.sum(select_level - Delta_treated[it, md_point:rx_point])
+        if lx_sum > rx_sum:
+          bottom = select_level
         else:
-          prev = Delta_treated[it, ix]-select_level
-          ix += 1
-      lx_point = intersections[0]
-      md_point = intersections[1]
-      rx_point = intersections[2]
-      lx_sum = np.sum(Delta_treated[it, lx_point:md_point] - select_level)
-      rx_sum = np.sum(select_level - Delta_treated[it, md_point:rx_point])
-      if lx_sum > rx_sum:
-        bottom = select_level
-      else:
-        top = select_level 
-      select_level = (bottom + top) / 2
-      print(select_level)
-    x_range = np.linspace(x_vec[lx_point], x_vec[rx_point],  100)
-    plt.plot(x_vec, Delta_treated[it, :], color=gnuplot(0.0))
-    plt.plot(x_range, select_level*np.ones_like(x_range), ls="dashed", lw=1.8)
+          top = select_level 
+        select_level = (bottom + top) / 2
+        print(select_level)
+      x_range = np.linspace(x_vec[lx_point], x_vec[rx_point],  100)
+      plt.plot(x_vec, Delta_treated[it, :], color=gnuplot(0.0))
+      plt.plot(x_range, select_level*np.ones_like(x_range), ls="dashed", lw=1.8)
 
-    plt.xlabel(r"$x$")
-    plt.ylabel(r"$\Delta$")
-    ax = plt.gca()
-    ax.set_ylim([-0.5, 1.5])
-    plt.legend([r'$T = {:.2f}$'.format(tj_vec[it]) ,r'$\Delta = {:.2f}$'.format(select_level)])
-    plt.savefig("media/maxwell.pdf", format="pdf", bbox_inches='tight')
+      plt.xlabel(r"$x$")
+      plt.ylabel(r"$\Delta$")
+      ax = plt.gca()
+      ax.set_ylim([-0.5, 1.5])
+      plt.legend([r'$T = {:.2f}$'.format(tj_vec[it]) ,r'$\Delta = {:.2f}$'.format(select_level)])
+      plt.savefig("media/maxwell.pdf", format="pdf", bbox_inches='tight')
 
     bDelta =  np.zeros_like(Delta_treated)
     a = np.zeros_like(Delta_treated)
@@ -478,29 +499,28 @@ def run(
       c[it, :] = tj * bC[it, :]
     discriminant = b**2 - 4*a*c
 
-    if True:
-      print("\n\n°°°°°° Treating Delta °°°°°°")
-      # process Delta
-      tj_max = 1.0
-      if K_over_J == 0.0:
-        tj_max = 0.33
-        clampD = [-0.2, 0.9] 
-      elif K_over_J < 1:
-        tj_max = 0.7
-        clampD = [0.0, 1] 
-      elif K_over_J<3:
-        clampD = [1.8, 2.2] 
-      else:
-        clampD = [1.8, 3.2] 
 
-      Delta_treated, spinodal, separation = process_Delta(
-        matrices[1], 
-        tj_max = tj_max,
-        discriminant = None
-        )
-      print(np.shape(separation))
+    print("\n\n°°°°°° Treating Delta °°°°°°")
+    # process Delta
+    tj_max = 1.0
+    if K_over_J == 0.0:
+      tj_max = 0.33
+      clampD = [-0.2, 0.9] 
+    elif K_over_J < 1:
+      tj_max = 0.7
+      clampD = [0.0, 1] 
+    elif K_over_J<3:
+      clampD = [1.8, 2.2] 
     else:
-      Delta_treated = matrices[1]
+      clampD = [1.8, 3.2] 
+
+    Delta_treated, spinodal, separation = process_Delta(
+      matrices[1], 
+      tj_max = tj_max,
+      discriminant = None,
+      K_over_J=K_over_J
+      )
+
     
     print("\n\n°°°°°° Plotting °°°°°°")
 
@@ -513,6 +533,10 @@ def run(
                  name="a"+suffix+".pdf", 
                  levels=[0.0], 
                  clamp = [-0.2, 0.4])
+    plot_heatmap(separation,
+                 name="spinsept"+suffix+".pdf", 
+                 levels=[], 
+                 midline=False)
     plot_heatmap(discriminant,
                  name="discriminant"+suffix+".pdf", 
                  levels=[0.0], 
@@ -520,13 +544,13 @@ def run(
     plot_heatmap(Delta_treated,    
                  name="Delta_heat"+suffix+".pdf", 
                  levels = [0.4763], 
-                 clamp = clampD)
+                 clamp = [2, 2.2])
     plt.clf()
     print(np.shape(x_vec))
     print(np.shape(tj_vec))
     print(np.shape(spinodal))
-    spinodal_heigth = np.ones_like(x_vec) * -10
-    separation_heigth = np.ones_like(x_vec) * -10
+    spinodal_heigth = np.ones_like(x_vec) * -100
+    separation_heigth = np.ones_like(x_vec) * -100
     for ix in range(len(x_vec)):
       spin_try = np.where(spinodal[:, ix] == 1)[0] 
       sepa_try = np.where(separation[:, ix] == 1)[0] 
@@ -534,26 +558,32 @@ def run(
         spinodal_heigth[ix] = tj_vec[spin_try[0]]
       if len(sepa_try) > 0:
         separation_heigth[ix] = tj_vec[sepa_try[0]]
-    # # normalize
-    # spinodal_heigth   *= 1/N
-    # separation_heigth *= 1/N
-    # # add step
-    # spinodal_heigth   += tj_vec[0]
-    # separation_heigth += tj_vec[0]
-    # remove the zero points
+    spinodal_heigth[spinodal_heigth<0.2] = -100
+    separation_heigth[separation_heigth<0.2] = -100
     spinodal_heigth[0] = 0.0
     separation_heigth[0] = 0.0
+
+    sp_plus = spinodal_heigth
+    sp_minu = spinodal_heigth
+    se_plus = separation_heigth
+    se_minu = separation_heigth
+
     for ix in range(len(x_vec[1:])):
       ix += 1
-      # if spinodal_heigth[ix] == -1:
-      #   spinodal_heigth[ix] = (spinodal_heigth[ix-1]+spinodal_heigth[ix+1])/2
-      # if separation_heigth[ix] == -1:
-      #   separation_heigth[ix] = (separation_heigth[ix-1]+separation_heigth[ix+1])/2
-      if np.abs(spinodal_heigth[ix]-spinodal_heigth[ix-1]) > 9:
-        spinodal_heigth[ix] = spinodal_heigth[ix-1]
-      if np.abs(separation_heigth[ix]-separation_heigth[ix-1]) > 5:
-        separation_heigth[ix] = separation_heigth[ix-1]
+      if np.abs(spinodal_heigth[ix]-spinodal_heigth[ix-1]) > 90:
+        sp_plus[ix] = spinodal_heigth[ix-1]
+      if np.abs(separation_heigth[ix]-separation_heigth[ix-1]) > 90:
+        se_plus[ix] = separation_heigth[ix-1]
 
+    for ix in range(len(x_vec[1::])):
+      ix = N-1-ix
+      if np.abs(spinodal_heigth[ix]-spinodal_heigth[ix-1]) > 90:
+        sp_minu[ix] = spinodal_heigth[ix-1]
+      if np.abs(separation_heigth[ix]-separation_heigth[ix-1]) > 90:
+        se_minu[ix] = separation_heigth[ix-1]
+
+    spinodal_heigth = (sp_minu+sp_plus)/2 
+    separation_heigth = (se_minu+se_plus)/2 
     plt.plot(x_vec, separation_heigth, label=r"First order transition", lw = 0.5)
     plt.plot(x_vec, spinodal_heigth, label=r"Spinodal line", lw = 0.5, ls="dashed")
     stopx = int(round(N * 0.67))
@@ -570,7 +600,7 @@ def run(
 
 
 run(
-  K_over_J_list=[0.0],
+  K_over_J_list=[2.88],
   N=1000,
   reset=False
   )
