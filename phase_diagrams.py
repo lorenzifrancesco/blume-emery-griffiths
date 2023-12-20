@@ -2,7 +2,6 @@ import numpy as np
 from scipy.optimize import root
 from tqdm import tqdm
 import threading
-from numba import jit
 from plotting_utils import *
 from solver import *
 
@@ -258,6 +257,7 @@ def process_Delta(
       spinodal = True,
       debug = True, 
       tj_max = 0.33, 
+      num_threads=20,
       discriminant=None):
   N = np.shape(Delta)[0]
   N_max = int(np.ceil(N*tj_max))
@@ -268,112 +268,129 @@ def process_Delta(
     ix += 1
     Delta_dx[:, ix] = Delta[:, ix]-Delta[:, ix-1]
   Delta_dx[:, 0] = Delta_dx[:, 1]
-
-
+  reduced_tj_vec = tj_vec[:N_max]
   # find the spinodal line
   spinodal = np.zeros_like(Delta)
-  change_sign = 1
-  print("\n\n--------------- Finding spinodal ---------------")
-  for it, tj in tqdm(enumerate(tj_vec[:N_max]), ascii=' >='):
-    for ix, x in enumerate(x_vec[1:]):
-      ix += 1
-      change_sign = Delta_dx[it, ix] * Delta_dx[it, ix-1]
-      if change_sign < 0.0:
-        ix += 1
-        # mem = Delta[it, ix]      
-        spinodal[it, ix] = 1
-
-        while Delta_dx[it, ix] * Delta_dx[it, ix-1] > 0:
-          ix += 1
-        spinodal[it, ix] = 1
-        break
-
   # find the phase separation
   separation = np.zeros_like(Delta)
   skip = 0
-  if isinstance(discriminant, type(None)):
-    print("\n\n--------------- Maxwellizing the Delta ---------------")
-    for it, tj in tqdm(enumerate(tj_vec[skip:N_max]), ascii=' >='):
-      it += skip
-      locations = (np.diff(np.sign(Delta_dx[it, :])) != 0)*1
-      stationary = np.where(locations == 1)[0]
-      if debug:
-        plt.plot(x_vec, Delta_dx[it, :])
-        plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
-        print("stationary:", stationary)
-        plt.scatter(x_vec[stationary], Delta_dx[it, stationary], color="red")
-        plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
-      if len(stationary) < 2:
-        print("didn't find two stationary point, passing to next temp...")
-      else:
-        if len(stationary)>2:
-          # select only first and last
-          stationary = [stationary[0], stationary[-1]]
-        H_idx = stationary[0]
-        L_idx = stationary[1]
-        top = Delta[it, H_idx]
-        bottom = Delta[it, L_idx]
-        select_level = (top + bottom)/2
-        # run a certain number of bisections
-        lx_point = 0
-        rx_point = N-1
-        for i in list(range(4)):
-          intersections = np.where((np.diff(np.sign(Delta[it, :] - select_level)) != 0)*1 == 1)[0]
-          if len(intersections) == 3:
-            # print("Found 3 intersections...")
-            lx_point = intersections[0]
-            md_point = intersections[1]
-            rx_point = intersections[2]
-          elif len(intersections) == 1:
-            print("Insufficient number of intersections, breaking...")
-            break
-            lx_point = 0
-            md_point = intersections[0]
-            rx_point = N-1
-          elif len(intersections) == 2:
-            print("Insufficient number of intersections, breaking...")
-            break
-            if H_idx < intersections[1]: 
+
+  def worker(start, end):
+    change_sign = 1
+    print("\n\n--------------- Finding spinodal ---------------")
+    for it, tj in tqdm(enumerate(tj_vec[start:end]), ascii=' >='):
+      for ix, x in enumerate(x_vec[1:]):
+        ix += 1
+        change_sign = Delta_dx[it, ix] * Delta_dx[it, ix-1]
+        if change_sign < 0.0:
+          ix += 1
+          # mem = Delta[it, ix]      
+          spinodal[it, ix] = 1
+
+          while Delta_dx[it, ix] * Delta_dx[it, ix-1] > 0:
+            ix += 1
+          spinodal[it, ix] = 1
+          break
+
+    if isinstance(discriminant, type(None)):
+      print("\n\n--------------- Maxwellizing the Delta ---------------")
+      for it, tj in tqdm(enumerate(tj_vec[start:end]), ascii=' >='):
+        it += skip
+        locations = (np.diff(np.sign(Delta_dx[it, :])) != 0)*1
+        stationary = np.where(locations == 1)[0]
+        if debug:
+          plt.plot(x_vec, Delta_dx[it, :])
+          plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
+          print("stationary:", stationary)
+          plt.scatter(x_vec[stationary], Delta_dx[it, stationary], color="red")
+          plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
+        if len(stationary) < 2:
+          print("didn't find two stationary point, passing to next temp...")
+        else:
+          if len(stationary)>2:
+            # select only first and last
+            stationary = [stationary[0], stationary[-1]]
+          H_idx = stationary[0]
+          L_idx = stationary[1]
+          top = Delta[it, H_idx]
+          bottom = Delta[it, L_idx]
+          select_level = (top + bottom)/2
+          # run a certain number of bisections
+          lx_point = 0
+          rx_point = N-1
+          for i in list(range(4)):
+            intersections = np.where((np.diff(np.sign(Delta[it, :] - select_level)) != 0)*1 == 1)[0]
+            if len(intersections) == 3:
+              # print("Found 3 intersections...")
               lx_point = intersections[0]
               md_point = intersections[1]
-              rx_point = N-1
-            else:
+              rx_point = intersections[2]
+            elif len(intersections) == 1:
+              print("Insufficient number of intersections, breaking...")
+              break
               lx_point = 0
               md_point = intersections[0]
-              rx_point = intersections[1]
-          lx_sum = np.sum(Delta[it, lx_point:md_point] - select_level)
-          rx_sum = np.sum(select_level - Delta[it, md_point:rx_point])
-          if lx_sum > rx_sum:
-            bottom = select_level
-          else:
-            top = select_level 
-          select_level = (bottom + top) / 2
-        Delta[it, lx_point:rx_point] = select_level
-        separation[it, lx_point] = 1
-        separation[it, rx_point] = 1
-  else:
-    for it, tj in tqdm(enumerate(tj_vec[skip:N_max]), ascii=' >='):
-      # detect a change of sign in the discriminant
-      locations = (np.diff(np.sign(discriminant[it, :])) != 0)*1
-      start_point = np.where(locations == 1)[0]
-      print("start:", start_point)
-      start_point=start_point[0]
+              rx_point = N-1
+            elif len(intersections) == 2:
+              print("Insufficient number of intersections, breaking...")
+              break
+              if H_idx < intersections[1]: 
+                lx_point = intersections[0]
+                md_point = intersections[1]
+                rx_point = N-1
+              else:
+                lx_point = 0
+                md_point = intersections[0]
+                rx_point = intersections[1]
+            lx_sum = np.sum(Delta[it, lx_point:md_point] - select_level)
+            rx_sum = np.sum(select_level - Delta[it, md_point:rx_point])
+            if lx_sum > rx_sum:
+              bottom = select_level
+            else:
+              top = select_level 
+            select_level = (bottom + top) / 2
+          Delta[it, lx_point:rx_point] = select_level
+          separation[it, lx_point] = 1
+          separation[it, rx_point] = 1
+    else:
+      for it, tj in tqdm(enumerate(tj_vec[skip:N_max]), ascii=' >='):
+        # detect a change of sign in the discriminant
+        locations = (np.diff(np.sign(discriminant[it, :])) != 0)*1
+        start_point = np.where(locations == 1)[0]
+        print("start:", start_point)
+        start_point=start_point[0]
 
-      # select the Delta value at the change of sign
-      value = Delta[it, start_point]
-      # find the endpoint and flatten
-      ix = start_point + 1
-      while ix<N and Delta[it, ix] - value > 0 :
-        Delta[it, ix] = value
-        ix += 1
-      
-      if ix<N:
-        ix += 1 
-        Delta[it, ix] = value
-
-        while ix<N and Delta[it, ix] - value < 0:
+        # select the Delta value at the change of sign
+        value = Delta[it, start_point]
+        # find the endpoint and flatten
+        ix = start_point + 1
+        while ix<N and Delta[it, ix] - value > 0 :
           Delta[it, ix] = value
           ix += 1
+        
+        if ix<N:
+          ix += 1 
+          Delta[it, ix] = value
+
+          while ix<N and Delta[it, ix] - value < 0:
+            Delta[it, ix] = value
+            ix += 1
+
+
+  # Calculate the range of indices each thread should handle
+  chunk_size = len(reduced_tj_vec) // num_threads
+  threads = []
+  #
+  # Create and start the threads
+  for i in range(num_threads):
+      start = i * chunk_size
+      end = (i + 1) * chunk_size if i < num_threads - 1 else len(reduced_tj_vec)
+      thread = threading.Thread(target=worker, args=(start, end))
+      threads.append(thread)
+      thread.start()
+  # Wait for all threads to finish
+  for thread in threads:
+      thread.join()
 
   return Delta, spinodal, separation
 
