@@ -6,6 +6,9 @@ from plotting_utils import *
 from solver import *
 
 import matplotlib.pyplot as plt
+from matplotlib import rc
+rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
+rc('text', usetex=True)
 
 def sweep_T(
     Delta = 0.1,
@@ -27,12 +30,13 @@ def sweep_T(
   ax.set_xlim([x_vec[0], x_vec[-1]])
   ax.set_ylim([tj_vec[0], tj_vec[-1]])
   plt.xlabel("x")
-  plt.ylabel("T/J")
+  plt.ylabel("T")
   plt.legend(labels=["Delta = "+ str(Delta)])
   plt.plot(x_vec, 1-x_vec, color="black")
   plt.scatter(2/3, 1/3, c='mediumseagreen', marker='+', s=150)
   plt.savefig("media/sweep_T_"+str(Delta)+".pdf", format="pdf", bbox_inches='tight')
   return
+
 
 def sweep_x(
     Delta=0.1,
@@ -58,7 +62,7 @@ def sweep_x(
   ax.set_xlim([x_vec[0], x_vec[-1]])
   ax.set_ylim([tj_vec[0], tj_vec[-1]])
   plt.xlabel("x")
-  plt.ylabel("T/J")
+  plt.ylabel("T")
   plt.legend(labels=["Delta = "+ str(Delta)])
   plt.plot(x_vec, 1-x_vec, color="black")
   plt.scatter(2/3, 1/3, c='mediumseagreen', marker='+', s=150)
@@ -71,7 +75,7 @@ def compute_parameters(
     K_over_J=0.0,
     num_threads=1,
     reset=True, 
-    prev_mem = True):
+    prev_mem = False):
   print("\n============= defining vectors =============")
   [tj_vec, x_vec] = get_arrays(N=N)
   M      = np.zeros((N, N))
@@ -87,7 +91,7 @@ def compute_parameters(
     print("\n============= start computing =============")
     # Define a worker function to fill the matrices
     def worker(start, end):
-        if K_over_J > 1:
+        if K_over_J < 1:
           vertical = True
         else: 
           vertical = False
@@ -95,8 +99,9 @@ def compute_parameters(
           for ix in tqdm(range(start, end)):
             x = x_vec[ix]
             # TODO: initial conditions are really sensible!!!
-            # working for low K/J
-            start_point = [np.clip((1-x)*1.2, 0.1, 1.2), 1.5]
+            # working for low K/J 
+            # [M, Delta]
+            start_point = [(1-x)*1.2, 0.6]
             # working for high K/J
             # start_point = [(1-x)*1.2, 2]
             for it, tj in enumerate(tj_vec):
@@ -110,18 +115,14 @@ def compute_parameters(
                 bB[it][ix] = get_bB(d) * tj
                 bC[it][ix] = get_bC(d) * tj
         else:
-          print("WARN: not good as the vertical one")
           for it, tj in tqdm(enumerate(tj_vec)):  
             for ix in range(start, end):
+              start_point = [(1-x_vec[ix])*1.5, 2.5]
               x = x_vec[ix]
-              if it == 0 :
-                start_point = [(1-x)*1.5, 2]
-              else:
-                start_point = [M[it-1][ix-1], Delta[it-1][ix]]
               bK = K_over_J * 1 / tj
               M[it][ix], Delta[it][ix] = get_M_Delta_separate(tj, x, bK, prev = start_point)
               if prev_mem:
-                  start_point = [M[it][ix], np.abs(Delta[it][ix])]
+                  start_point = [M[it][ix], Delta[it][ix]]
               bDelta[it][ix] = Delta[it][ix] / tj
               d = get_delta(bDelta[it][ix], bK, x)
               bA[it][ix] = get_bA(d, tj) * tj
@@ -161,6 +162,7 @@ def compute_parameters(
     bB = np.load('bB_matrix'+suffix+'.npy')
     bC = np.load('bC_matrix'+suffix+'.npy')
   return [M, Delta, bA, bB, bC]
+
 
 def compute_Mx(
     N=400, 
@@ -227,58 +229,33 @@ def compute_Mx(
   return [M, x]
 
    
-def plot_implicit(fn, bbox=(-2.5,2.5)):
-    xmin, xmax, ymin, ymax, zmin, zmax = bbox*3
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    A = np.linspace(xmin, xmax, 100) # resolution of the contour
-    B = np.linspace(xmin, xmax, 15) # number of slices
-    A1,A2 = np.meshgrid(A,A) # grid on which the contour is plotted
-    for z in B: # plot contours in the XY plane
-        X,Y = A1,A2
-        Z = fn(X,Y,z)
-        cset = ax.contour(X, Y, Z+z, [z], zdir='z')
-        # [z] defines the only level to plot for this contour for this value of z
-    for y in B: # plot contours in the XZ plane
-        X,Z = A1,A2
-        Y = fn(X,y,Z)
-        cset = ax.contour(X, Y+y, Z, [y], zdir='y')
-    for x in B: # plot contours in the YZ plane
-        Y,Z = A1,A2
-        X = fn(x,Y,Z)
-        cset = ax.contour(X+x, Y, Z, [x], zdir='x')
-    ax.set_zlim3d(zmin,zmax)
-    ax.set_xlim3d(xmin,xmax)
-    ax.set_ylim3d(ymin,ymax)
-
-
 def process_Delta(
       Delta, 
       spinodal = True,
-      debug = True, 
+      debug = False, 
       tj_max = 0.33, 
-      num_threads=20,
-      discriminant=None):
+      discriminant=None,
+      K_over_J = 0.0, 
+      reset = False):
   N = np.shape(Delta)[0]
-  N_max = int(np.ceil(N*tj_max))
-  # find the spinodal
-  [tj_vec, x_vec] = get_arrays(N=N)
-  Delta_dx = np.zeros_like(Delta)
-  for ix, x in enumerate(x_vec[1:]):
-    ix += 1
-    Delta_dx[:, ix] = Delta[:, ix]-Delta[:, ix-1]
-  Delta_dx[:, 0] = Delta_dx[:, 1]
-  reduced_tj_vec = tj_vec[:N_max]
-  # find the spinodal line
-  spinodal = np.zeros_like(Delta)
-  # find the phase separation
-  separation = np.zeros_like(Delta)
-  skip = 0
+  suffix = '_' + K_over_J.__str__().replace(".", "_")
+  
+  if not os.path.isfile('Beautiful'+suffix+'.npy') or reset:
+    N_max = int(np.ceil(N*tj_max))
+    # find the spinodal
+    [tj_vec, x_vec] = get_arrays(N=N)
+    Delta_dx = np.zeros_like(Delta)
+    for ix, x in enumerate(x_vec[1:]):
+      ix += 1
+      Delta_dx[:, ix] = Delta[:, ix]-Delta[:, ix-1]
+    Delta_dx[:, 0] = Delta_dx[:, 1]
 
-  def worker(start, end):
+
+    # find the spinodal line
+    spinodal = np.zeros_like(Delta)
     change_sign = 1
     print("\n\n--------------- Finding spinodal ---------------")
-    for it, tj in tqdm(enumerate(tj_vec[start:end]), ascii=' >='):
+    for it, tj in tqdm(enumerate(tj_vec[:N_max]), ascii=' >='):
       for ix, x in enumerate(x_vec[1:]):
         ix += 1
         change_sign = Delta_dx[it, ix] * Delta_dx[it, ix-1]
@@ -292,66 +269,107 @@ def process_Delta(
           spinodal[it, ix] = 1
           break
 
+    Delta_dx[it, ix] = 99 # number greater than zero
+    # find the phase separation
+    separation = np.zeros_like(Delta)
+    skip = 0
     if isinstance(discriminant, type(None)):
-      print("\n\n--------------- Maxwellizing the Delta ---------------")
-      for it, tj in tqdm(enumerate(tj_vec[start:end]), ascii=' >='):
+      counter = np.zeros(100)
+      print("\n\n--------------- Maxwellizing the Delta ---------------\n")
+      for it in tqdm(range(len(tj_vec[skip:N_max]))):
         it += skip
         locations = (np.diff(np.sign(Delta_dx[it, :])) != 0)*1
         stationary = np.where(locations == 1)[0]
         if debug:
+          plt.clf()
           plt.plot(x_vec, Delta_dx[it, :])
           plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
-          print("stationary:", stationary)
-          plt.scatter(x_vec[stationary], Delta_dx[it, stationary], color="red")
-          plt.savefig("debug.pdf", format="pdf", bbox_inches='tight')
+          print("\rstationary:", stationary)
         if len(stationary) < 2:
-          print("didn't find two stationary point, passing to next temp...")
+          print("\rdidn't  two stationary point, passing to next temp...")
         else:
-          if len(stationary)>2:
-            # select only first and last
-            stationary = [stationary[0], stationary[-1]]
-          H_idx = stationary[0]
-          L_idx = stationary[1]
-          top = Delta[it, H_idx]
-          bottom = Delta[it, L_idx]
-          select_level = (top + bottom)/2
-          # run a certain number of bisections
-          lx_point = 0
-          rx_point = N-1
-          for i in list(range(4)):
-            intersections = np.where((np.diff(np.sign(Delta[it, :] - select_level)) != 0)*1 == 1)[0]
-            if len(intersections) == 3:
-              # print("Found 3 intersections...")
-              lx_point = intersections[0]
-              md_point = intersections[1]
-              rx_point = intersections[2]
-            elif len(intersections) == 1:
-              print("Insufficient number of intersections, breaking...")
-              break
-              lx_point = 0
-              md_point = intersections[0]
-              rx_point = N-1
-            elif len(intersections) == 2:
-              print("Insufficient number of intersections, breaking...")
-              break
-              if H_idx < intersections[1]: 
+          if len(stationary) % 2 != 0:
+            print("\rOdd number of stationary points, dropping the last...")
+            stationary = stationary[:-1]
+          
+          # iterate Maxwell over all couples of stationary points
+          stationary_all = stationary
+          stationary_aux = np.concatenate(([0], stationary_all, [N]))
+          print("no of stationary points:", len(stationary_aux))
+          for idx in range(int(len(stationary_all)/2)):  
+            extremes = [stationary_aux[2*idx], N]
+            stationary = [stationary_all[2*idx], stationary_all[2*idx+1]]
+            H_idx = stationary[0]
+            L_idx = stationary[1]
+            top = Delta[it, H_idx]
+            bottom = Delta[it, L_idx]
+            select_level = (top + bottom)/2
+            # run a certain number of bisections
+            lx_point = 66
+            rx_point = 80
+            for i in list(range(40)):
+              # intersections = np.where((np.diff(np.sign(Delta[it, :] - select_level)) != 0)*1 == 1)[0]
+              intersections = []
+              prev = Delta[it, 0]-select_level
+              ix = extremes[0]
+              while ix < extremes[1]:
+                if (Delta[it, ix]-select_level) * prev < 0:
+                  intersections.append(ix)
+                  for _ in range(1): # backoff for 5 steps
+                    ix += 1
+                  prev = Delta[it, np.min([ix, N-1])]-select_level
+                else:
+                  prev = Delta[it, ix]-select_level
+                  ix += 1
+                
+              # print(intersections)
+              # for ii in intersections:
+              #   Delta[it, ii] = 99
+              counter[len(intersections)] +=1
+              if len(intersections) == 3:
+                print("\rFound 3 intersections...")
                 lx_point = intersections[0]
                 md_point = intersections[1]
-                rx_point = N-1
-              else:
+                rx_point = intersections[2]
+              elif len(intersections) <= 1:
+                print("\rInsufficient number of intersections, breaking...")
+                lx_point = 556
+                rx_point = 550
+                break
                 lx_point = 0
                 md_point = intersections[0]
-                rx_point = intersections[1]
-            lx_sum = np.sum(Delta[it, lx_point:md_point] - select_level)
-            rx_sum = np.sum(select_level - Delta[it, md_point:rx_point])
-            if lx_sum > rx_sum:
-              bottom = select_level
-            else:
-              top = select_level 
-            select_level = (bottom + top) / 2
-          Delta[it, lx_point:rx_point] = select_level
-          separation[it, lx_point] = 1
-          separation[it, rx_point] = 1
+                rx_point = N-1
+              elif len(intersections) == 2:
+                print("\r 2 intersections, managing...")
+                if H_idx < intersections[1]: 
+                  lx_point = intersections[0]
+                  md_point = intersections[1]
+                  rx_point = N-1
+                else:
+                  lx_point = 0
+                  md_point = intersections[0]
+                  rx_point = intersections[1]
+              else:
+                # lx_point = L_idx
+                # rx_point = H_idx
+                # print("\r More than 3 intersections?? BREAKING !!!...")
+                # break
+                print("\r More than 3 intersections?? dropping last one...")
+                intersections = intersections[:-1]
+                lx_point = intersections[0]
+                md_point = intersections[1]
+                rx_point = intersections[2]
+              lx_sum = np.sum(Delta[it, lx_point:md_point] - select_level)
+              rx_sum = np.sum(select_level - Delta[it, md_point:rx_point])
+              if lx_sum > rx_sum:
+                bottom = select_level
+              else:
+                top = select_level 
+              select_level = (bottom + top) / 2
+            Delta[it, lx_point:rx_point] = select_level
+            separation[it, lx_point] = 1
+            separation[it, rx_point] = 1
+      print("number of hits: ", counter)
     else:
       for it, tj in tqdm(enumerate(tj_vec[skip:N_max]), ascii=' >='):
         # detect a change of sign in the discriminant
@@ -375,23 +393,10 @@ def process_Delta(
           while ix<N and Delta[it, ix] - value < 0:
             Delta[it, ix] = value
             ix += 1
-
-
-  # Calculate the range of indices each thread should handle
-  chunk_size = len(reduced_tj_vec) // num_threads
-  threads = []
-  #
-  # Create and start the threads
-  for i in range(num_threads):
-      start = i * chunk_size
-      end = (i + 1) * chunk_size if i < num_threads - 1 else len(reduced_tj_vec)
-      thread = threading.Thread(target=worker, args=(start, end))
-      threads.append(thread)
-      thread.start()
-  # Wait for all threads to finish
-  for thread in threads:
-      thread.join()
-
+    np.save('Beautiful'+suffix+'.npy', (Delta, spinodal, separation))
+  else:
+    print("\n Loading the beautiful Delta...")
+    Delta, spinodal, separation = np.load('Beautiful'+suffix+'.npy')
   return Delta, spinodal, separation
 
 
@@ -409,14 +414,83 @@ def run(
       N=N
       )
     
+    [tj_vec, x_vec] = get_arrays(N=N)
     [M, Delta_treated, bA, bB, bC] = matrices
+    suffix = '_' + K_over_J.__str__().replace(".", "_")
+    plot_heatmap(M, name="M"+suffix+".pdf", levels=[], title=r"$M$")
+    plot_heatmap(Delta_treated, name="Delta_bare"+suffix+".pdf", levels=[0.4763], clamp = [2, 2.2] )
+
+    plt.clf()
+    tj_list = np.array([25, 147, 265])
+    tj_list = np.clip(tj_list, 0, np.shape(Delta_treated)[0]-1)
+    gnuplot = mpl.colormaps["gnuplot"]
+    scaled = (tj_list - tj_list.min()) / (tj_list.max()-tj_list.min()) * 0.8
+    for iii, tj_idx in enumerate(tj_list):
+      plt.plot(x_vec, Delta_treated[tj_idx, :], color=gnuplot(scaled[iii]))
+      plt.xlabel(r"$x$")
+      plt.ylabel(r"$\Delta$")
+    ax = plt.gca()
+    ax.set_ylim([-0.5, 1.5])
+    plt.scatter(2/3, 2/3*np.log(2), c='red', marker='x', s=100)
+    plt.legend([r'$T = {:.2f}$'.format(tj_vec[_]) for _ in tj_list])
+    plt.savefig("media/isotherms.pdf", format="pdf", bbox_inches='tight')
+    
+
+    if K_over_J == 0.0:
+      plt.clf()
+      it = 20
+      tj_list = np.array([it])
+      gnuplot = mpl.colormaps["gnuplot"]
+      scaled = (tj_list - tj_list.min()) / (tj_list.max()-tj_list.min()) * 0.8
+      Ddx = np.diff(Delta_treated)
+      extremes = np.where((np.diff(np.sign(Ddx[it, :])) != 0)*1 == 1)[0]
+      assert len(extremes)==2
+      H_idx = extremes[0]
+      L_idx = extremes[1]
+      top = Delta_treated[it, H_idx]
+      bottom = Delta_treated[it, L_idx]
+      select_level = (top + bottom)/2
+      for _ in range(10):
+        intersections = []
+        prev = Delta_treated[it, 0]-select_level
+        ix = 0
+        while ix < len(x_vec):
+          if (Delta_treated[it, ix]-select_level) * prev < 0:
+            intersections.append(ix)
+            for _ in range(1): # backoff for 5 steps
+              ix += 1
+            prev = Delta_treated[it, np.min([ix, N-1])]-select_level
+          else:
+            prev = Delta_treated[it, ix]-select_level
+            ix += 1
+        lx_point = intersections[0]
+        md_point = intersections[1]
+        rx_point = intersections[2]
+        lx_sum = np.sum(Delta_treated[it, lx_point:md_point] - select_level)
+        rx_sum = np.sum(select_level - Delta_treated[it, md_point:rx_point])
+        if lx_sum > rx_sum:
+          bottom = select_level
+        else:
+          top = select_level 
+        select_level = (bottom + top) / 2
+        print(select_level)
+      x_range = np.linspace(x_vec[lx_point], x_vec[rx_point],  100)
+      plt.plot(x_vec, Delta_treated[it, :], color=gnuplot(0.0))
+      plt.plot(x_range, select_level*np.ones_like(x_range), ls="dashed", lw=1.8)
+
+      plt.xlabel(r"$x$")
+      plt.ylabel(r"$\Delta$")
+      ax = plt.gca()
+      ax.set_ylim([-0.5, 1.5])
+      plt.legend([r'$T = {:.2f}$'.format(tj_vec[it]) ,r'$\Delta = {:.2f}$'.format(select_level)])
+      plt.savefig("media/maxwell.pdf", format="pdf", bbox_inches='tight')
+
     bDelta =  np.zeros_like(Delta_treated)
     a = np.zeros_like(Delta_treated)
     b = np.zeros_like(Delta_treated)
     c = np.zeros_like(Delta_treated)
     discriminant = np.zeros_like(Delta_treated)
 
-    [tj_vec, x_vec] = get_arrays(N=N)
     for it, tj in enumerate(tj_vec):
       bDelta[it, :] = Delta_treated[it, :] / tj
       a[it, :] = tj * bA[it, :]
@@ -424,50 +498,114 @@ def run(
       c[it, :] = tj * bC[it, :]
     discriminant = b**2 - 4*a*c
 
-    if True:
-      print("\n\n°°°°°° Treating Delta °°°°°°")
-      # process Delta
-      tj_max = 1.0
-      if K_over_J == 0.0:
-        tj_max = 0.33
-      elif K_over_J < 1:
-        tj_max = 0.7
-      Delta_treated, spinodal, separation = process_Delta(
-        matrices[1], 
-        tj_max = tj_max,
-        discriminant = None
-        )
+
+    print("\n\n°°°°°° Treating Delta °°°°°°")
+    # process Delta
+    tj_max = 1.0
+    if K_over_J == 0.0:
+      tj_max = 0.33
+      clampD = [-0.2, 0.9] 
+    elif K_over_J < 1:
+      tj_max = 0.7
+      clampD = [0.0, 1] 
+    elif K_over_J<3:
+      clampD = [1.8, 2.2] 
     else:
-      Delta_treated = matrices[1]
+      clampD = [1.8, 3.2] 
+
+    Delta_treated, spinodal, separation = process_Delta(
+      matrices[1], 
+      tj_max = tj_max,
+      discriminant = None,
+      K_over_J=K_over_J
+      )
+
     
     print("\n\n°°°°°° Plotting °°°°°°")
-    suffix = '_' + K_over_J.__str__().replace(".", "_")
 
     print("\n============= plotting =============")
-    clampD = [1.8, 2.2] 
-    plot_contour(Delta_treated,    
-                 name="Delta"+suffix+".pdf", 
-                 levels=400, 
-                 clamp = [0.0, 2])
+    plot_contour(Delta_treated,
+                 name="Delta_contour"+suffix+".pdf", 
+                 levels=np.linspace(-0.5, 1.5, 50), 
+                 clamp = [0.])
+    plot_heatmap(a,
+                 name="a"+suffix+".pdf", 
+                 levels=[0.0], 
+                 clamp = [-0.2, 0.4])
+    plot_heatmap(separation,
+                 name="spinsept"+suffix+".pdf", 
+                 levels=[], 
+                 midline=False)
+    plot_heatmap(discriminant,
+                 name="discriminant"+suffix+".pdf", 
+                 levels=[0.0], 
+                 clamp = [-0.2, 0.2])
     plot_heatmap(Delta_treated,    
                  name="Delta_heat"+suffix+".pdf", 
-                 levels = np.linspace(0.05, 0.6, 100), 
-                 midline=False, 
-                 clamp = clampD)
-    plot_heatmap(spinodal+separation,    
-                 name="lines"+suffix+".pdf", 
-                 levels=None,
-                 midline=False)
-    plot_heatmap(a, 
-                 name="a"+suffix+".pdf")
-    plot_heatmap(discriminant, 
-                 name="discriminant"+suffix+".pdf")
+                 levels = [0.4763], 
+                 clamp = [2, 2.2])
+    plt.clf()
+    print(np.shape(x_vec))
+    print(np.shape(tj_vec))
+    print(np.shape(spinodal))
+    spinodal_heigth = np.ones_like(x_vec) * -100
+    separation_heigth = np.ones_like(x_vec) * -100
+    for ix in range(len(x_vec)):
+      spin_try = np.where(spinodal[:, ix] == 1)[0] 
+      sepa_try = np.where(separation[:, ix] == 1)[0] 
+      if len(spin_try) > 0:
+        spinodal_heigth[ix] = tj_vec[spin_try[0]]
+      if len(sepa_try) > 0:
+        separation_heigth[ix] = tj_vec[sepa_try[0]]
+    spinodal_heigth[spinodal_heigth<0.2] = -100
+    separation_heigth[separation_heigth<0.2] = -100
+    spinodal_heigth[0] = 0.0
+    separation_heigth[0] = 0.0
+    
+    ix = 0
+    lenN = len(x_vec)-1
+    while ix < lenN:
+      cnt = 1
+      while ix+cnt<lenN and np.abs(spinodal_heigth[ix+cnt]-spinodal_heigth[ix]) > 90:
+        cnt += 1
+      if cnt > 0:
+        for joint in range(cnt):
+          joint += 1
+          spinodal_heigth[ix+joint] = spinodal_heigth[ix]*(cnt-joint)/cnt + spinodal_heigth[ix+cnt]*(joint)/cnt
+      ix += cnt
+    
+    ix = 0
+    while ix < lenN:
+      cnt = 1
+      while ix+cnt<lenN and np.abs(separation_heigth[ix+cnt]-separation_heigth[ix]) > 90:
+        cnt += 1
+      print("the original one is: ", separation_heigth[ix])
+      if cnt > 0:
+        for joint in range(cnt):
+          joint += 1
+          separation_heigth[ix+joint] = separation_heigth[ix]*(cnt-joint)/cnt + separation_heigth[ix+cnt]*(joint)/cnt
+      ix += cnt
+    
+    plt.plot(x_vec, separation_heigth, label=r"First order transition", lw = 0.5)
+    # plt.plot(x_vec, spinodal_heigth, label=r"Spinodal line", lw = 0.5, ls="dashed")
+    stopx = int(round(N * 0.23))
+    plt.plot(x_vec[:stopx], 1-x_vec[:stopx], label=r"Second order transition", lw = 0.5)
+    plt.plot(x_vec, 0.703*np.ones_like(x_vec), label=r"Triple point $T$", lw = 0.5, ls="dotted", color="grey")
+
+    plt.xlabel(r"$x$")
+    plt.ylabel(r"$T$")
+    ax = plt.gca()
+    ax.set_xlim([x_vec[0], x_vec[-1]])
+    ax.set_ylim([tj_vec[0], tj_vec[-1]])
+    plt.legend(loc="best")
+    plt.savefig("media/lines.pdf", format="pdf", bbox_inches='tight')
+
   return
 
 
 run(
-  K_over_J_list=[2.88], 
-  N=200, 
+  K_over_J_list=[4.2],
+  N=1000,
   reset=True
   )
 
